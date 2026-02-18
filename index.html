@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Country Lyrics</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- SCREEN 1: Song List -->
+  <div id="view-song-list" class="view active">
+    <header class="header">
+      <h1 class="app-title">Country Lyrics</h1>
+      <div class="header-actions">
+        <div class="search-bar">
+          <input type="text" id="search-input" placeholder="Search songs...">
+        </div>
+        <button id="btn-add-song" class="btn-primary">+ New Song</button>
+        <button id="btn-playlists" class="btn-secondary">Playlists</button>
+      </div>
+      <div class="header-actions" style="margin-top: 0.5rem;">
+        <button id="btn-fetch-all" class="btn-secondary">Fetch All Lyrics</button>
+        <span id="fetch-all-status" class="fetch-status"></span>
+        <button id="btn-export" class="btn-secondary">Export</button>
+        <button id="btn-import" class="btn-secondary">Import</button>
+        <input type="file" id="import-file-input" accept=".json" hidden>
+      </div>
+    </header>
+    <main class="main-content">
+      <ul id="song-list"></ul>
+      <div id="empty-state" class="empty-state">
+        <p class="empty-icon">&#127928;</p>
+        <p>No songs yet</p>
+        <p class="empty-hint">Tap "+ New Song" to get started</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- SCREEN 2: Song Editor -->
+  <div id="view-song-editor" class="view">
+    <header class="header">
+      <button id="btn-back-to-list" class="btn-back">&larr; Back</button>
+      <h1 id="editor-title">New Song</h1>
+    </header>
+    <main class="main-content">
+      <form id="song-form" class="song-form">
+        <div class="form-group">
+          <label for="input-title">Song Title</label>
+          <input type="text" id="input-title" required placeholder="e.g. Take Me Home, Country Roads">
+        </div>
+        <div class="form-group">
+          <label for="input-artist">Artist</label>
+          <input type="text" id="input-artist" placeholder="e.g. John Denver">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="input-bpm">BPM</label>
+            <input type="number" id="input-bpm" min="1" max="300" value="120">
+            <span class="hint">Tempo (beats per minute)</span>
+          </div>
+          <div class="form-group">
+            <label for="input-beats-per-line">Beats per Line</label>
+            <input type="number" id="input-beats-per-line" min="1" max="64" value="8">
+            <span class="hint">How many beats before next line</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="label-row">
+            <label for="input-lyrics">Lyrics</label>
+            <button type="button" id="btn-fetch-lyrics" class="btn-secondary btn-small">Search Lyrics</button>
+            <span id="fetch-lyrics-status" class="fetch-status"></span>
+          </div>
+          <textarea id="input-lyrics" rows="15" placeholder="Enter lyrics here...
+
+Line break = new line
+Blank line = section break
+
+Example:
+Almost heaven, West Virginia
+Blue Ridge Mountains, Shenandoah River
+
+Country roads, take me home
+To the place I belong"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save</button>
+          <button type="button" id="btn-delete-song" class="btn-danger" hidden>Delete</button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <!-- SCREEN 4: Playlists -->
+  <div id="view-playlists" class="view">
+    <header class="header">
+      <button id="btn-back-from-playlists" class="btn-back">&larr; Back</button>
+      <h1 class="app-title">Playlists</h1>
+      <div class="header-actions">
+        <button id="btn-new-playlist" class="btn-primary">+ New Playlist</button>
+      </div>
+    </header>
+    <main class="main-content">
+      <ul id="playlist-list"></ul>
+      <div id="playlist-empty-state" class="empty-state">
+        <p class="empty-icon">&#127926;</p>
+        <p>No playlists yet</p>
+        <p class="empty-hint">Tap "+ New Playlist" to get started</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- SCREEN 5: Playlist Detail -->
+  <div id="view-playlist-detail" class="view">
+    <header class="header">
+      <button id="btn-back-from-playlist-detail" class="btn-back">&larr; Back</button>
+      <h1 id="playlist-detail-title">Playlist</h1>
+      <div class="header-actions">
+        <button id="btn-play-playlist" class="btn-primary">&#9654; Play All</button>
+        <button id="btn-add-song-to-playlist" class="btn-secondary">+ Add Songs</button>
+        <button id="btn-rename-playlist" class="btn-secondary btn-small">Rename</button>
+        <button id="btn-delete-playlist" class="btn-danger btn-small">Delete</button>
+      </div>
+    </header>
+    <main class="main-content">
+      <ul id="playlist-song-list"></ul>
+      <div id="playlist-detail-empty" class="empty-state">
+        <p class="empty-icon">&#127925;</p>
+        <p>No songs in this playlist</p>
+        <p class="empty-hint">Tap "+ Add Songs" to add songs</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Song Picker Modal -->
+  <div id="song-picker-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Songs</h2>
+        <button id="btn-close-song-picker" class="btn-icon">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="song-picker-search" placeholder="Search songs...">
+        <ul id="song-picker-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist Picker Modal (for adding song to playlist from song list) -->
+  <div id="playlist-picker-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add to Playlist</h2>
+        <button id="btn-close-playlist-picker" class="btn-icon">&times;</button>
+      </div>
+      <div class="modal-body">
+        <ul id="playlist-picker-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- SCREEN 3: Performance Display -->
+  <div id="view-performer" class="view">
+    <div id="performer-overlay" class="performer-overlay">
+      <div id="slide-counter" class="slide-counter"></div>
+      <div id="lyrics-display" class="lyrics-display">
+        <div id="lyrics-current" class="lyrics-current"></div>
+        <div id="lyrics-next" class="lyrics-next"></div>
+      </div>
+      <div id="progress-bar" class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </div>
+    <div id="performer-controls" class="performer-controls">
+      <button id="btn-exit-performer" class="btn-icon" title="Exit">&times;</button>
+      <span id="performer-song-title" class="performer-song-title"></span>
+      <div class="performer-control-group">
+        <button id="btn-prev-line" class="btn-icon" title="Previous">&#9664;</button>
+        <button id="btn-play-pause" class="btn-icon btn-play" title="Play / Pause">&#9654;</button>
+        <button id="btn-next-line" class="btn-icon" title="Next">&#9654;&#9654;</button>
+      </div>
+      <button id="btn-display-mode" class="btn-mode" title="Display Mode (M)">Line</button>
+      <span id="performer-bpm-display" class="bpm-display">BPM: 120</span>
+    </div>
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/lyricsFetcher.js"></script>
+  <script src="js/bpmEngine.js"></script>
+  <script src="js/songList.js"></script>
+  <script src="js/songEditor.js"></script>
+  <script src="js/playlistView.js"></script>
+  <script src="js/performer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
