@@ -43,6 +43,107 @@ LyricsApp.SongListView = {
         importFileInput.value = "";
       });
     });
+
+    // Sync modal
+    var syncModal = document.getElementById("sync-modal");
+    var syncSetup = document.getElementById("sync-setup");
+    var syncConnected = document.getElementById("sync-connected");
+
+    document.getElementById("btn-sync").addEventListener("click", function () {
+      if (LyricsApp.GistSync.isConfigured()) {
+        syncSetup.style.display = "none";
+        syncConnected.style.display = "block";
+      } else {
+        syncSetup.style.display = "block";
+        syncConnected.style.display = "none";
+      }
+      syncModal.classList.remove("hidden");
+    });
+
+    document.getElementById("btn-close-sync").addEventListener("click", function () {
+      syncModal.classList.add("hidden");
+    });
+
+    // Connect: create new Gist
+    document.getElementById("btn-gist-connect").addEventListener("click", function () {
+      var token = document.getElementById("input-gist-token").value.trim();
+      if (!token) return;
+      var status = document.getElementById("sync-setup-status");
+      status.textContent = "Connecting...";
+      status.className = "fetch-status loading";
+
+      LyricsApp.GistSync.createGist(token, function (err, gistId) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "Connected!";
+          status.className = "fetch-status success";
+          syncSetup.style.display = "none";
+          syncConnected.style.display = "block";
+        }
+      });
+    });
+
+    // Sync Now
+    document.getElementById("btn-gist-sync").addEventListener("click", function () {
+      var status = document.getElementById("sync-status");
+      status.textContent = "Syncing...";
+      status.className = "fetch-status loading";
+      LyricsApp.GistSync.sync(function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "Synced!";
+          status.className = "fetch-status success";
+          self.render();
+        }
+      });
+    });
+
+    // Push
+    document.getElementById("btn-gist-push").addEventListener("click", function () {
+      var status = document.getElementById("sync-status");
+      status.textContent = "Pushing...";
+      status.className = "fetch-status loading";
+      LyricsApp.GistSync.push(function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "Pushed!";
+          status.className = "fetch-status success";
+        }
+      });
+    });
+
+    // Pull
+    document.getElementById("btn-gist-pull").addEventListener("click", function () {
+      var status = document.getElementById("sync-status");
+      status.textContent = "Pulling...";
+      status.className = "fetch-status loading";
+      LyricsApp.GistSync.pull(function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "Pulled!";
+          status.className = "fetch-status success";
+          self.render();
+        }
+      });
+    });
+
+    // Disconnect
+    document.getElementById("btn-gist-disconnect").addEventListener("click", function () {
+      LyricsApp.GistSync.disconnect();
+      document.getElementById("input-gist-token").value = "";
+      syncConnected.style.display = "none";
+      syncSetup.style.display = "block";
+      document.getElementById("sync-status").textContent = "";
+      document.getElementById("sync-setup-status").textContent = "";
+    });
   },
 
   render: function (query) {
