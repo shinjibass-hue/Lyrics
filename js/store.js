@@ -2,6 +2,7 @@ window.LyricsApp = window.LyricsApp || {};
 
 LyricsApp.Store = {
   STORAGE_KEY: "country_lyrics_songs",
+  _suppressSync: false, // true when writing from merge (prevents sync loop)
 
   _read: function () {
     try {
@@ -15,6 +16,9 @@ LyricsApp.Store = {
   _write: function (songs) {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
+      if (!this._suppressSync && LyricsApp.GistSync) {
+        LyricsApp.GistSync.scheduleSync();
+      }
     } catch (e) {
       alert("Storage limit reached. Please delete some songs.");
     }
@@ -322,6 +326,7 @@ LyricsApp.Store = {
 // ===== PlaylistStore =====
 LyricsApp.PlaylistStore = {
   STORAGE_KEY: "country_lyrics_playlists",
+  _suppressSync: false,
 
   _read: function () {
     try {
@@ -335,6 +340,9 @@ LyricsApp.PlaylistStore = {
   _write: function (playlists) {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(playlists));
+      if (!this._suppressSync && LyricsApp.GistSync) {
+        LyricsApp.GistSync.scheduleSync();
+      }
     } catch (e) {
       alert("Storage limit reached.");
     }

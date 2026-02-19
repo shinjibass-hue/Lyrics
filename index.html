@@ -11,7 +11,10 @@
   <!-- SCREEN 1: Song List -->
   <div id="view-song-list" class="view active">
     <header class="header">
-      <h1 class="app-title">Country Lyrics</h1>
+      <div class="header-title-row">
+        <h1 class="app-title">Country Lyrics</h1>
+        <span id="sync-indicator" class="sync-indicator hidden" title="Sync status"></span>
+      </div>
       <div class="header-actions">
         <div class="search-bar">
           <input type="text" id="search-input" placeholder="Search songs...">
@@ -182,9 +185,10 @@ To the place I belong"></textarea>
           <span id="sync-setup-status" class="fetch-status"></span>
         </div>
         <div id="sync-connected" style="display:none;">
-          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
-            Connected to GitHub Gist.
+          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.5rem;">
+            Connected to GitHub Gist. Auto-sync is active.
           </p>
+          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></p>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
             <button id="btn-gist-push" class="btn-secondary">Push</button>

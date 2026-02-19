@@ -53,6 +53,7 @@ LyricsApp.SongListView = {
       if (LyricsApp.GistSync.isConfigured()) {
         syncSetup.style.display = "none";
         syncConnected.style.display = "block";
+        self._updateSyncInfo();
       } else {
         syncSetup.style.display = "block";
         syncConnected.style.display = "none";
@@ -77,10 +78,15 @@ LyricsApp.SongListView = {
           status.textContent = "Error: " + err;
           status.className = "fetch-status error";
         } else {
-          status.textContent = "Connected!";
+          status.textContent = "Connected! Auto-sync enabled.";
           status.className = "fetch-status success";
           syncSetup.style.display = "none";
           syncConnected.style.display = "block";
+          self._updateSyncInfo();
+          // Start auto-sync and show indicator
+          var indicator = document.getElementById("sync-indicator");
+          if (indicator) indicator.classList.remove("hidden");
+          LyricsApp.GistSync.startAutoSync();
         }
       });
     });
@@ -143,7 +149,21 @@ LyricsApp.SongListView = {
       syncSetup.style.display = "block";
       document.getElementById("sync-status").textContent = "";
       document.getElementById("sync-setup-status").textContent = "";
+      var indicator = document.getElementById("sync-indicator");
+      if (indicator) indicator.classList.add("hidden");
     });
+  },
+
+  _updateSyncInfo: function () {
+    var infoEl = document.getElementById("sync-last-time");
+    if (!infoEl) return;
+    var t = LyricsApp.GistSync.getLastSyncTime();
+    if (t) {
+      var d = new Date(t);
+      infoEl.textContent = "Last sync: " + d.toLocaleDateString() + " " + d.toLocaleTimeString();
+    } else {
+      infoEl.textContent = "Auto-sync enabled";
+    }
   },
 
   render: function (query) {

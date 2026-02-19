@@ -25,7 +25,50 @@ LyricsApp.App = {
       LyricsApp.App.navigate("playlists");
     });
 
+    // Auto-sync: set up status indicator and start
+    this._initAutoSync();
+
     this.navigate("song-list");
+  },
+
+  _initAutoSync: function () {
+    var indicator = document.getElementById("sync-indicator");
+    if (!indicator) return;
+
+    // Update indicator based on sync status
+    LyricsApp.GistSync.onStatusChange(function (status) {
+      indicator.className = "sync-indicator";
+      switch (status) {
+        case "syncing":
+          indicator.classList.add("syncing");
+          indicator.title = "Syncing...";
+          break;
+        case "synced":
+          indicator.classList.add("synced");
+          var t = LyricsApp.GistSync.getLastSyncTime();
+          indicator.title = "Synced: " + (t ? new Date(t).toLocaleTimeString() : "just now");
+          break;
+        case "error":
+          indicator.classList.add("sync-error");
+          indicator.title = "Sync error - tap Sync to retry";
+          break;
+        case "offline":
+          indicator.classList.add("sync-offline");
+          indicator.title = "Offline - will sync when back online";
+          break;
+        default:
+          indicator.classList.add("hidden");
+          break;
+      }
+    });
+
+    // Show/hide indicator based on configuration
+    if (LyricsApp.GistSync.isConfigured()) {
+      indicator.classList.remove("hidden");
+      LyricsApp.GistSync.startAutoSync();
+    } else {
+      indicator.classList.add("hidden");
+    }
   },
 
   navigate: function (viewName, params) {

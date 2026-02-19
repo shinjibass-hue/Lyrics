@@ -4,7 +4,15 @@ window.LyricsApp = window.LyricsApp || {};
 // Stores songs + playlists in a single Gist file
 LyricsApp.GistSync = {
   SETTINGS_KEY: "country_lyrics_gist_settings",
+  LAST_SYNC_KEY: "country_lyrics_last_sync",
   FILENAME: "country-lyrics-data.json",
+
+  // Auto-sync state
+  _autoSyncTimer: null,
+  _autoSyncDelay: 3000, // debounce: 3 seconds after last change
+  _syncInProgress: false,
+  _pendingSync: false,
+  _listeners: [],
 
   // Get saved settings {token, gistId}
   getSettings: function () {
@@ -25,6 +33,27 @@ LyricsApp.GistSync = {
     return !!(s.token && s.gistId);
   },
 
+  // Get last sync timestamp
+  getLastSyncTime: function () {
+    return localStorage.getItem(this.LAST_SYNC_KEY) || null;
+  },
+
+  _saveLastSyncTime: function () {
+    localStorage.setItem(this.LAST_SYNC_KEY, new Date().toISOString());
+  },
+
+  // Subscribe to sync status changes
+  // listener(status): status is "syncing" | "synced" | "error" | "offline"
+  onStatusChange: function (listener) {
+    this._listeners.push(listener);
+  },
+
+  _notifyStatus: function (status, detail) {
+    for (var i = 0; i < this._listeners.length; i++) {
+      this._listeners[i](status, detail);
+    }
+  },
+
   // Create a new Gist with current data
   createGist: function (token, callback) {
     var self = this;
@@ -39,6 +68,8 @@ LyricsApp.GistSync = {
     this._request("POST", "https://api.github.com/gists", token, body, function (err, resp) {
       if (err) return callback(err);
       self.saveSettings({ token: token, gistId: resp.id });
+      self._saveLastSyncTime();
+      self._notifyStatus("synced");
       callback(null, resp.id);
     });
   },
@@ -48,12 +79,14 @@ LyricsApp.GistSync = {
     var settings = this.getSettings();
     if (!settings.token || !settings.gistId) return callback("Not configured");
 
+    var self = this;
     var data = this._buildData();
     var body = { files: {} };
     body.files[this.FILENAME] = { content: JSON.stringify(data, null, 2) };
 
     this._request("PATCH", "https://api.github.com/gists/" + settings.gistId, settings.token, body, function (err) {
       if (err) return callback(err);
+      self._saveLastSyncTime();
       callback(null);
     });
   },
@@ -92,9 +125,91 @@ LyricsApp.GistSync = {
     });
   },
 
-  // Disconnect: remove settings
+  // ===== Auto-sync =====
+
+  // Start auto-sync: syncs on app start, on data changes (debounced), and on tab visibility
+  startAutoSync: function () {
+    if (!this.isConfigured()) return;
+    var self = this;
+
+    // Sync on app start
+    this._doAutoSync();
+
+    // Sync when tab becomes visible (user returns from another device)
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible" && self.isConfigured()) {
+        self._doAutoSync();
+      }
+    });
+
+    // Sync when coming back online
+    window.addEventListener("online", function () {
+      if (self.isConfigured()) {
+        self._doAutoSync();
+      }
+    });
+
+    window.addEventListener("offline", function () {
+      self._notifyStatus("offline");
+    });
+  },
+
+  // Called when local data changes - debounces then syncs
+  scheduleSync: function () {
+    if (!this.isConfigured()) return;
+    var self = this;
+
+    if (this._autoSyncTimer) {
+      clearTimeout(this._autoSyncTimer);
+    }
+    this._autoSyncTimer = setTimeout(function () {
+      self._autoSyncTimer = null;
+      self._doAutoSync();
+    }, this._autoSyncDelay);
+  },
+
+  _doAutoSync: function () {
+    if (this._syncInProgress) {
+      this._pendingSync = true;
+      return;
+    }
+    if (!navigator.onLine) {
+      this._notifyStatus("offline");
+      return;
+    }
+
+    var self = this;
+    this._syncInProgress = true;
+    this._notifyStatus("syncing");
+
+    this.sync(function (err) {
+      self._syncInProgress = false;
+      if (err) {
+        self._notifyStatus("error", err);
+      } else {
+        self._notifyStatus("synced");
+        // Refresh current view if on song list
+        if (LyricsApp.SongListView && document.getElementById("view-song-list").classList.contains("active")) {
+          LyricsApp.SongListView.render(document.getElementById("search-input").value);
+        }
+      }
+      // If another sync was requested while we were syncing, do it now
+      if (self._pendingSync) {
+        self._pendingSync = false;
+        self._doAutoSync();
+      }
+    });
+  },
+
+  // Disconnect: remove settings and stop auto-sync
   disconnect: function () {
     localStorage.removeItem(this.SETTINGS_KEY);
+    localStorage.removeItem(this.LAST_SYNC_KEY);
+    if (this._autoSyncTimer) {
+      clearTimeout(this._autoSyncTimer);
+      this._autoSyncTimer = null;
+    }
+    this._notifyStatus("disconnected");
   },
 
   // Build data object from local stores
@@ -109,6 +224,10 @@ LyricsApp.GistSync = {
 
   // Merge remote data into local (newer updatedAt wins)
   _mergeData: function (data) {
+    // Suppress sync triggers during merge to avoid infinite loop
+    LyricsApp.Store._suppressSync = true;
+    LyricsApp.PlaylistStore._suppressSync = true;
+
     if (data.songs && Array.isArray(data.songs)) {
       var localSongs = LyricsApp.Store._read();
       var localMap = {};
@@ -156,6 +275,9 @@ LyricsApp.GistSync = {
       }
       LyricsApp.PlaylistStore._write(localPl);
     }
+
+    LyricsApp.Store._suppressSync = false;
+    LyricsApp.PlaylistStore._suppressSync = false;
   },
 
   // HTTP request helper

@@ -45,11 +45,47 @@ body {
   z-index: 10;
 }
 
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
 .app-title {
   font-size: 1.6rem;
   color: var(--accent);
-  margin-bottom: 0.8rem;
+  margin-bottom: 0;
   letter-spacing: 0.02em;
+}
+
+/* Sync status indicator dot */
+.sync-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+.sync-indicator.synced {
+  background: #6a4;
+  box-shadow: 0 0 6px rgba(102, 170, 68, 0.5);
+}
+.sync-indicator.syncing {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+  animation: syncPulse 1s ease-in-out infinite;
+}
+.sync-indicator.sync-error {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(204, 68, 68, 0.5);
+}
+.sync-indicator.sync-offline {
+  background: var(--text-dim);
+}
+@keyframes syncPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 .header-actions {
