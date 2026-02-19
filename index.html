@@ -200,19 +200,9 @@ To the place I belong"></textarea>
             &#10003; Connected &amp; Auto-sync ON
           </p>
           <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.8rem;"></p>
-          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.6rem 0.7rem;margin-bottom:1rem;">
-            <p style="color:var(--accent);font-size:0.8rem;font-weight:bold;margin-bottom:0.4rem;">Add another device:</p>
-            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.3rem;">1. Open Sync on the new device</p>
-            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.5rem;">2. Enter these values:</p>
-            <div style="background:var(--bg-secondary);border-radius:4px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;">
-              <p style="color:var(--text-dim);font-size:0.65rem;">Token (tap to copy):</p>
-              <p id="sync-token-display" style="color:var(--text-primary);font-size:0.75rem;font-family:monospace;word-break:break-all;cursor:pointer;"></p>
-            </div>
-            <div style="background:var(--bg-secondary);border-radius:4px;padding:0.4rem 0.6rem;">
-              <p style="color:var(--text-dim);font-size:0.65rem;">Gist ID (tap to copy):</p>
-              <p id="sync-gist-id" style="color:var(--text-primary);font-size:0.75rem;font-family:monospace;word-break:break-all;cursor:pointer;"></p>
-            </div>
-          </div>
+          <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:1rem;">
+            All devices sync automatically. Any changes are shared instantly.
+          </p>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
             <button id="btn-gist-push" class="btn-secondary btn-small">Push</button>
@@ -260,6 +250,7 @@ To the place I belong"></textarea>
   <script src="js/songEditor.js?v=2"></script>
   <script src="js/playlistView.js?v=2"></script>
   <script src="js/performer.js?v=2"></script>
+  <script src="js/qrcode.js?v=2"></script>
   <script src="js/gistSync.js?v=2"></script>
   <script src="js/app.js?v=2"></script>
 </body>

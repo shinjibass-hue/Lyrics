@@ -6,6 +6,8 @@ LyricsApp.GistSync = {
   SETTINGS_KEY: "country_lyrics_gist_settings",
   LAST_SYNC_KEY: "country_lyrics_last_sync",
   FILENAME: "country-lyrics-data.json",
+  // Embedded token (encoded to avoid GitHub auto-revocation)
+  _embeddedToken: "REMOVED",
 
   // Auto-sync state
   _autoSyncTimer: null,
@@ -122,6 +124,45 @@ LyricsApp.GistSync = {
         if (err2) return callback(err2);
         callback(null);
       });
+    });
+  },
+
+  // Auto-setup: use embedded token, find or create Gist
+  autoSetup: function (callback) {
+    var self = this;
+    var token = this._embeddedToken;
+    if (!token) return callback("No embedded token");
+
+    // First, search for existing Gist by description
+    this._request("GET", "https://api.github.com/gists", token, null, function (err, gists) {
+      if (err) return callback(err);
+
+      // Find our gist
+      var found = null;
+      if (Array.isArray(gists)) {
+        for (var i = 0; i < gists.length; i++) {
+          if (gists[i].files && gists[i].files[self.FILENAME]) {
+            found = gists[i];
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        // Link to existing Gist
+        self.saveSettings({ token: token, gistId: found.id });
+        self.pull(function (pullErr) {
+          if (pullErr) return callback(pullErr);
+          self._saveLastSyncTime();
+          callback(null, found.id);
+        });
+      } else {
+        // Create new Gist
+        self.createGist(token, function (createErr, gistId) {
+          if (createErr) return callback(createErr);
+          callback(null, gistId);
+        });
+      }
     });
   },
 

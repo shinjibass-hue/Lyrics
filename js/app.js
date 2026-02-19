@@ -78,10 +78,25 @@ LyricsApp.App = {
       }
     });
 
-    // Show/hide indicator based on configuration
+    // Auto-setup or start sync
     if (LyricsApp.GistSync.isConfigured()) {
       indicator.classList.remove("hidden");
       LyricsApp.GistSync.startAutoSync();
+    } else if (LyricsApp.GistSync._embeddedToken) {
+      // Auto-setup with embedded token
+      indicator.classList.remove("hidden");
+      indicator.classList.add("syncing");
+      indicator.title = "Setting up sync...";
+      LyricsApp.GistSync.autoSetup(function (err, gistId) {
+        if (err) {
+          indicator.classList.remove("syncing");
+          indicator.classList.add("sync-error");
+          indicator.title = "Auto-setup failed";
+        } else {
+          LyricsApp.GistSync.startAutoSync();
+          LyricsApp.SongListView.render();
+        }
+      });
     } else {
       indicator.classList.add("hidden");
     }
