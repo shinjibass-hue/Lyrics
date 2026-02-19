@@ -182,20 +182,29 @@ LyricsApp.CloudSync = {
   },
 
   _req: function (method, url, body, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(method, url, true);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("Accept", "application/json");
-    xhr.onload = function () {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try { callback(null, JSON.parse(xhr.responseText), xhr); }
-        catch (e) { callback(null, {}, xhr); }
-      } else {
-        callback("HTTP " + xhr.status);
+    var opts = {
+      method: method,
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       }
     };
-    xhr.onerror = function () { callback("Network error"); };
-    xhr.send(body ? JSON.stringify(body) : null);
+    if (body) opts.body = JSON.stringify(body);
+
+    fetch(url, opts)
+      .then(function (resp) {
+        if (!resp.ok) return callback("HTTP " + resp.status);
+        var loc = resp.headers.get("Location") || "";
+        return resp.text().then(function (text) {
+          var data = {};
+          try { data = JSON.parse(text); } catch (e) {}
+          callback(null, data, { getResponseHeader: function () { return loc; } });
+        });
+      })
+      .catch(function (e) {
+        callback("Network error: " + e.message);
+      });
   }
 };
 
