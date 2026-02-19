@@ -39,7 +39,8 @@ LyricsApp.App = {
     var params = new URLSearchParams(window.location.search);
     var token = params.get("token");
     var gistId = params.get("gist");
-    if (token && gistId && !LyricsApp.GistSync.isConfigured()) {
+    if (token && gistId) {
+      // Always overwrite - allows re-linking or updating credentials
       LyricsApp.GistSync.saveSettings({ token: token, gistId: gistId });
       // Clean URL (remove params)
       window.history.replaceState({}, "", window.location.pathname);

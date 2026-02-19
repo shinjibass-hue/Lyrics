@@ -172,15 +172,28 @@ To the place I belong"></textarea>
       </div>
       <div class="modal-body">
         <div id="sync-setup" style="display:none;">
-          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1rem;">
-            GitHub Personal Access Token (<code>gist</code> scope) to sync data across devices.
-          </p>
-          <div class="form-group">
-            <label for="input-gist-token">GitHub Token</label>
-            <input type="text" id="input-gist-token" placeholder="ghp_xxxxxxxxxxxx">
+          <div id="sync-setup-link" style="margin-bottom:1.5rem;">
+            <p style="color:var(--accent);font-size:0.95rem;font-weight:bold;margin-bottom:0.5rem;">
+              Already syncing on another device?
+            </p>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem;">
+              Open Sync &rarr; Share Link on that device, then open the copied URL here.
+            </p>
           </div>
-          <div class="form-actions">
-            <button id="btn-gist-connect" class="btn-primary">Connect</button>
+          <div style="border-top:1px solid var(--border);padding-top:1rem;">
+            <p style="color:var(--accent);font-size:0.95rem;font-weight:bold;margin-bottom:0.5rem;">
+              First time setup
+            </p>
+            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem;">
+              GitHub Personal Access Token (<code>gist</code> scope) to sync data across devices.
+            </p>
+            <div class="form-group">
+              <label for="input-gist-token">GitHub Token</label>
+              <input type="text" id="input-gist-token" placeholder="ghp_xxxxxxxxxxxx">
+            </div>
+            <div class="form-actions">
+              <button id="btn-gist-connect" class="btn-primary">Connect</button>
+            </div>
           </div>
           <span id="sync-setup-status" class="fetch-status"></span>
         </div>
