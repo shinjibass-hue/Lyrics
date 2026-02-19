@@ -858,5 +858,16 @@ textarea {
   font-size: 0.85rem;
 }
 
-/* ===== 13. Utilities ===== */
+/* ===== 13. Sync Setup Steps ===== */
+.sync-steps {
+  margin-bottom: 0.5rem;
+}
+.sync-step-label {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-bottom: 0.4rem;
+}
+
+/* ===== 14. Utilities ===== */
 .hidden { display: none !important; }

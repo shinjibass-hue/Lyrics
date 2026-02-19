@@ -172,15 +172,23 @@ To the place I belong"></textarea>
       </div>
       <div class="modal-body">
         <div id="sync-setup" style="display:none;">
-          <div class="form-group">
-            <label for="input-gist-token">GitHub Token</label>
-            <input type="text" id="input-gist-token" placeholder="ghp_xxxxxxxxxxxx">
-            <span class="hint">Personal Access Token (<code>gist</code> scope)</span>
+          <div class="sync-steps">
+            <p class="sync-step-label">Step 1: Get a GitHub Token</p>
+            <a href="https://github.com/settings/tokens/new?scopes=gist&description=Country+Lyrics+Sync"
+               target="_blank" class="btn-primary" style="display:inline-block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
+              Open GitHub &rarr; Create Token
+            </a>
+            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:1rem;">
+              Just click "Generate token" at the bottom, then copy it.
+            </p>
+            <p class="sync-step-label">Step 2: Paste here</p>
           </div>
           <div class="form-group">
-            <label for="input-gist-id">Gist ID (other device connected?)</label>
-            <input type="text" id="input-gist-id" placeholder="Leave blank for new setup">
-            <span class="hint">Enter Gist ID from another device, or leave blank to create new</span>
+            <input type="text" id="input-gist-token" placeholder="Paste token here: ghp_xxxxxxxxxxxx">
+          </div>
+          <div class="form-group">
+            <label for="input-gist-id">Gist ID (already syncing on another device?)</label>
+            <input type="text" id="input-gist-id" placeholder="Leave blank for first device">
           </div>
           <div class="form-actions">
             <button id="btn-gist-connect" class="btn-primary">Connect</button>
@@ -188,17 +196,22 @@ To the place I belong"></textarea>
           <span id="sync-setup-status" class="fetch-status"></span>
         </div>
         <div id="sync-connected" style="display:none;">
-          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.3rem;">
-            Connected. Auto-sync is active.
+          <p style="color:#6a4;font-size:0.9rem;font-weight:bold;margin-bottom:0.3rem;">
+            &#10003; Connected &amp; Auto-sync ON
           </p>
-          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.5rem;"></p>
-          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:0.5rem;">
-            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Gist ID (tap to copy):</p>
-            <p id="sync-gist-id" style="color:var(--accent);font-size:0.8rem;font-family:monospace;word-break:break-all;cursor:pointer;" title="Tap to copy"></p>
-          </div>
-          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:1rem;">
-            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Token (tap to copy):</p>
-            <p id="sync-token-display" style="color:var(--text-secondary);font-size:0.7rem;font-family:monospace;word-break:break-all;cursor:pointer;" title="Tap to copy"></p>
+          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.8rem;"></p>
+          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.6rem 0.7rem;margin-bottom:1rem;">
+            <p style="color:var(--accent);font-size:0.8rem;font-weight:bold;margin-bottom:0.4rem;">Add another device:</p>
+            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.3rem;">1. Open Sync on the new device</p>
+            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:0.5rem;">2. Enter these values:</p>
+            <div style="background:var(--bg-secondary);border-radius:4px;padding:0.4rem 0.6rem;margin-bottom:0.3rem;">
+              <p style="color:var(--text-dim);font-size:0.65rem;">Token (tap to copy):</p>
+              <p id="sync-token-display" style="color:var(--text-primary);font-size:0.75rem;font-family:monospace;word-break:break-all;cursor:pointer;"></p>
+            </div>
+            <div style="background:var(--bg-secondary);border-radius:4px;padding:0.4rem 0.6rem;">
+              <p style="color:var(--text-dim);font-size:0.65rem;">Gist ID (tap to copy):</p>
+              <p id="sync-gist-id" style="color:var(--text-primary);font-size:0.75rem;font-family:monospace;word-break:break-all;cursor:pointer;"></p>
+            </div>
           </div>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
