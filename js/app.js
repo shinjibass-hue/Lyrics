@@ -25,34 +25,17 @@ LyricsApp.App = {
       LyricsApp.App.navigate("playlists");
     });
 
-    // Check URL for shared sync settings (from another device)
-    this._checkUrlSyncParams();
-
     // Auto-sync: set up status indicator and start
     this._initAutoSync();
 
     this.navigate("song-list");
   },
 
-  // If URL contains ?token=...&gist=..., auto-configure and clean URL
-  _checkUrlSyncParams: function () {
-    var params = new URLSearchParams(window.location.search);
-    var token = params.get("token");
-    var gistId = params.get("gist");
-    if (token && gistId) {
-      // Always overwrite - allows re-linking or updating credentials
-      LyricsApp.GistSync.saveSettings({ token: token, gistId: gistId });
-      // Clean URL (remove params)
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  },
-
   _initAutoSync: function () {
     var indicator = document.getElementById("sync-indicator");
     if (!indicator) return;
 
-    // Update indicator based on sync status
-    LyricsApp.GistSync.onStatusChange(function (status) {
+    LyricsApp.NasSync.onStatusChange(function (status) {
       indicator.className = "sync-indicator";
       switch (status) {
         case "syncing":
@@ -61,16 +44,16 @@ LyricsApp.App = {
           break;
         case "synced":
           indicator.classList.add("synced");
-          var t = LyricsApp.GistSync.getLastSyncTime();
+          var t = LyricsApp.NasSync.getLastSyncTime();
           indicator.title = "Synced: " + (t ? new Date(t).toLocaleTimeString() : "just now");
           break;
         case "error":
           indicator.classList.add("sync-error");
-          indicator.title = "Sync error - tap Sync to retry";
+          indicator.title = "Sync error";
           break;
         case "offline":
           indicator.classList.add("sync-offline");
-          indicator.title = "Offline - will sync when back online";
+          indicator.title = "Offline";
           break;
         default:
           indicator.classList.add("hidden");
@@ -78,25 +61,9 @@ LyricsApp.App = {
       }
     });
 
-    // Auto-setup or start sync
-    if (LyricsApp.GistSync.isConfigured()) {
+    if (LyricsApp.NasSync.isConfigured()) {
       indicator.classList.remove("hidden");
-      LyricsApp.GistSync.startAutoSync();
-    } else if (LyricsApp.GistSync._embeddedToken) {
-      // Auto-setup with embedded token
-      indicator.classList.remove("hidden");
-      indicator.classList.add("syncing");
-      indicator.title = "Setting up sync...";
-      LyricsApp.GistSync.autoSetup(function (err, gistId) {
-        if (err) {
-          indicator.classList.remove("syncing");
-          indicator.classList.add("sync-error");
-          indicator.title = "Auto-setup failed";
-        } else {
-          LyricsApp.GistSync.startAutoSync();
-          LyricsApp.SongListView.render();
-        }
-      });
+      LyricsApp.NasSync.startAutoSync();
     } else {
       indicator.classList.add("hidden");
     }

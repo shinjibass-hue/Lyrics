@@ -50,7 +50,7 @@ LyricsApp.SongListView = {
     var syncConnected = document.getElementById("sync-connected");
 
     document.getElementById("btn-sync").addEventListener("click", function () {
-      if (LyricsApp.GistSync.isConfigured()) {
+      if (LyricsApp.NasSync.isConfigured()) {
         syncSetup.style.display = "none";
         syncConnected.style.display = "block";
         self._updateSyncInfo();
@@ -65,125 +65,74 @@ LyricsApp.SongListView = {
       syncModal.classList.add("hidden");
     });
 
-    // Connect: create new Gist or link existing
-    document.getElementById("btn-gist-connect").addEventListener("click", function () {
-      var token = document.getElementById("input-gist-token").value.trim();
-      if (!token) return;
-      var existingGistId = document.getElementById("input-gist-id").value.trim();
-      var status = document.getElementById("sync-setup-status");
+    // Connect to NAS
+    document.getElementById("btn-nas-connect").addEventListener("click", function () {
+      var url = document.getElementById("input-nas-url").value.trim().replace(/\/+$/, "");
+      var account = document.getElementById("input-nas-account").value.trim();
+      var passwd = document.getElementById("input-nas-passwd").value;
+      if (!url || !account || !passwd) return;
+
+      var status = document.getElementById("sync-status");
       status.textContent = "Connecting...";
       status.className = "fetch-status loading";
 
-      var onConnected = function () {
-        status.textContent = "Connected! Auto-sync enabled.";
-        status.className = "fetch-status success";
-        syncSetup.style.display = "none";
-        syncConnected.style.display = "block";
-        self._updateSyncInfo();
-        var indicator = document.getElementById("sync-indicator");
-        if (indicator) indicator.classList.remove("hidden");
-        LyricsApp.GistSync.startAutoSync();
-      };
-
-      if (existingGistId) {
-        // Link to existing Gist
-        LyricsApp.GistSync.saveSettings({ token: token, gistId: existingGistId });
-        LyricsApp.GistSync.pull(function (err) {
-          if (err) {
-            status.textContent = "Error: " + err;
-            status.className = "fetch-status error";
-            LyricsApp.GistSync.disconnect();
-          } else {
-            LyricsApp.GistSync._saveLastSyncTime();
-            onConnected();
-            self.render();
-          }
-        });
-      } else {
-        // Create new Gist
-        LyricsApp.GistSync.createGist(token, function (err, gistId) {
-          if (err) {
-            status.textContent = "Error: " + err;
-            status.className = "fetch-status error";
-          } else {
-            onConnected();
-          }
-        });
-      }
+      LyricsApp.NasSync.connect(url, account, passwd, function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "";
+          syncSetup.style.display = "none";
+          syncConnected.style.display = "block";
+          self._updateSyncInfo();
+          document.getElementById("sync-indicator").classList.remove("hidden");
+          LyricsApp.NasSync.startAutoSync();
+          self.render();
+        }
+      });
     });
 
     // Sync Now
-    document.getElementById("btn-gist-sync").addEventListener("click", function () {
-      var status = document.getElementById("sync-status");
+    document.getElementById("btn-nas-sync").addEventListener("click", function () {
+      var status = document.getElementById("sync-status-connected");
       status.textContent = "Syncing...";
       status.className = "fetch-status loading";
-      LyricsApp.GistSync.sync(function (err) {
+      LyricsApp.NasSync.sync(function (err) {
         if (err) {
           status.textContent = "Error: " + err;
           status.className = "fetch-status error";
         } else {
           status.textContent = "Synced!";
           status.className = "fetch-status success";
-          self.render();
-        }
-      });
-    });
-
-    // Push
-    document.getElementById("btn-gist-push").addEventListener("click", function () {
-      var status = document.getElementById("sync-status");
-      status.textContent = "Pushing...";
-      status.className = "fetch-status loading";
-      LyricsApp.GistSync.push(function (err) {
-        if (err) {
-          status.textContent = "Error: " + err;
-          status.className = "fetch-status error";
-        } else {
-          status.textContent = "Pushed!";
-          status.className = "fetch-status success";
-        }
-      });
-    });
-
-    // Pull
-    document.getElementById("btn-gist-pull").addEventListener("click", function () {
-      var status = document.getElementById("sync-status");
-      status.textContent = "Pulling...";
-      status.className = "fetch-status loading";
-      LyricsApp.GistSync.pull(function (err) {
-        if (err) {
-          status.textContent = "Error: " + err;
-          status.className = "fetch-status error";
-        } else {
-          status.textContent = "Pulled!";
-          status.className = "fetch-status success";
+          self._updateSyncInfo();
           self.render();
         }
       });
     });
 
     // Disconnect
-    document.getElementById("btn-gist-disconnect").addEventListener("click", function () {
-      LyricsApp.GistSync.disconnect();
-      document.getElementById("input-gist-token").value = "";
+    document.getElementById("btn-nas-disconnect").addEventListener("click", function () {
+      LyricsApp.NasSync.disconnect();
+      document.getElementById("input-nas-url").value = "";
+      document.getElementById("input-nas-account").value = "";
+      document.getElementById("input-nas-passwd").value = "";
       syncConnected.style.display = "none";
       syncSetup.style.display = "block";
       document.getElementById("sync-status").textContent = "";
-      document.getElementById("sync-setup-status").textContent = "";
-      var indicator = document.getElementById("sync-indicator");
-      if (indicator) indicator.classList.add("hidden");
+      document.getElementById("sync-status-connected").textContent = "";
+      document.getElementById("sync-indicator").classList.add("hidden");
     });
   },
 
   _updateSyncInfo: function () {
     var infoEl = document.getElementById("sync-last-time");
     if (infoEl) {
-      var t = LyricsApp.GistSync.getLastSyncTime();
+      var t = LyricsApp.NasSync.getLastSyncTime();
       if (t) {
         var d = new Date(t);
         infoEl.textContent = "Last sync: " + d.toLocaleDateString() + " " + d.toLocaleTimeString();
       } else {
-        infoEl.textContent = "Auto-sync enabled";
+        infoEl.textContent = "";
       }
     }
   },

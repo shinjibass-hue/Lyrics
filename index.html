@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -167,49 +167,33 @@ To the place I belong"></textarea>
   <div id="sync-modal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>Sync Settings</h2>
+        <h2>NAS Sync</h2>
         <button id="btn-close-sync" class="btn-icon">&times;</button>
       </div>
       <div class="modal-body">
         <div id="sync-setup" style="display:none;">
-          <div class="sync-steps">
-            <p class="sync-step-label">Step 1: Get a GitHub Token</p>
-            <a href="https://github.com/settings/tokens/new?scopes=gist&description=Country+Lyrics+Sync"
-               target="_blank" class="btn-primary" style="display:inline-block;text-align:center;text-decoration:none;margin-bottom:0.5rem;">
-              Open GitHub &rarr; Create Token
-            </a>
-            <p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:1rem;">
-              Just click "Generate token" at the bottom, then copy it.
-            </p>
-            <p class="sync-step-label">Step 2: Paste here</p>
+          <div class="form-group">
+            <input type="text" id="input-nas-url" placeholder="NAS URL (https://...)">
           </div>
           <div class="form-group">
-            <input type="text" id="input-gist-token" placeholder="Paste token here: ghp_xxxxxxxxxxxx">
+            <input type="text" id="input-nas-account" placeholder="Username">
           </div>
           <div class="form-group">
-            <label for="input-gist-id">Gist ID (already syncing on another device?)</label>
-            <input type="text" id="input-gist-id" placeholder="Leave blank for first device">
+            <input type="password" id="input-nas-passwd" placeholder="Password">
           </div>
           <div class="form-actions">
-            <button id="btn-gist-connect" class="btn-primary">Connect</button>
+            <button id="btn-nas-connect" class="btn-primary">Connect</button>
           </div>
-          <span id="sync-setup-status" class="fetch-status"></span>
+          <span id="sync-status" class="fetch-status"></span>
         </div>
         <div id="sync-connected" style="display:none;">
-          <p style="color:#6a4;font-size:0.9rem;font-weight:bold;margin-bottom:0.3rem;">
-            &#10003; Connected &amp; Auto-sync ON
-          </p>
-          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.8rem;"></p>
-          <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:1rem;">
-            All devices sync automatically. Any changes are shared instantly.
-          </p>
-          <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
-            <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
-            <button id="btn-gist-push" class="btn-secondary btn-small">Push</button>
-            <button id="btn-gist-pull" class="btn-secondary btn-small">Pull</button>
-            <button id="btn-gist-disconnect" class="btn-danger btn-small">Disconnect</button>
+          <p style="color:#6a4;font-weight:bold;margin-bottom:0.5rem;">&#10003; Auto-sync ON</p>
+          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></p>
+          <div class="form-actions">
+            <button id="btn-nas-sync" class="btn-primary">Sync Now</button>
+            <button id="btn-nas-disconnect" class="btn-danger btn-small">Disconnect</button>
           </div>
-          <span id="sync-status" class="fetch-status" style="display:block;margin-top:0.8rem;"></span>
+          <span id="sync-status-connected" class="fetch-status" style="display:block;margin-top:0.5rem;"></span>
         </div>
       </div>
     </div>
@@ -243,15 +227,14 @@ To the place I belong"></textarea>
     </div>
   </div>
 
-  <script src="js/store.js?v=2"></script>
-  <script src="js/lyricsFetcher.js?v=2"></script>
-  <script src="js/bpmEngine.js?v=2"></script>
-  <script src="js/songList.js?v=2"></script>
-  <script src="js/songEditor.js?v=2"></script>
-  <script src="js/playlistView.js?v=2"></script>
-  <script src="js/performer.js?v=2"></script>
-  <script src="js/qrcode.js?v=2"></script>
-  <script src="js/gistSync.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/store.js?v=3"></script>
+  <script src="js/lyricsFetcher.js?v=3"></script>
+  <script src="js/bpmEngine.js?v=3"></script>
+  <script src="js/songList.js?v=3"></script>
+  <script src="js/songEditor.js?v=3"></script>
+  <script src="js/playlistView.js?v=3"></script>
+  <script src="js/performer.js?v=3"></script>
+  <script src="js/gistSync.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
