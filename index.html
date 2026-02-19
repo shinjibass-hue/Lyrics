@@ -172,46 +172,35 @@ To the place I belong"></textarea>
       </div>
       <div class="modal-body">
         <div id="sync-setup" style="display:none;">
-          <div id="sync-setup-link" style="margin-bottom:1.5rem;">
-            <p style="color:var(--accent);font-size:0.95rem;font-weight:bold;margin-bottom:0.5rem;">
-              Already syncing on another device?
-            </p>
-            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem;">
-              Open Sync &rarr; Share Link on that device, then open the copied URL here.
-            </p>
+          <div class="form-group">
+            <label for="input-gist-token">GitHub Token</label>
+            <input type="text" id="input-gist-token" placeholder="ghp_xxxxxxxxxxxx">
+            <span class="hint">Personal Access Token (<code>gist</code> scope)</span>
           </div>
-          <div style="border-top:1px solid var(--border);padding-top:1rem;">
-            <p style="color:var(--accent);font-size:0.95rem;font-weight:bold;margin-bottom:0.5rem;">
-              First time setup
-            </p>
-            <p style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:0.8rem;">
-              GitHub Personal Access Token (<code>gist</code> scope) to sync data across devices.
-            </p>
-            <div class="form-group">
-              <label for="input-gist-token">GitHub Token</label>
-              <input type="text" id="input-gist-token" placeholder="ghp_xxxxxxxxxxxx">
-            </div>
-            <div class="form-actions">
-              <button id="btn-gist-connect" class="btn-primary">Connect</button>
-            </div>
+          <div class="form-group">
+            <label for="input-gist-id">Gist ID (other device connected?)</label>
+            <input type="text" id="input-gist-id" placeholder="Leave blank for new setup">
+            <span class="hint">Enter Gist ID from another device, or leave blank to create new</span>
+          </div>
+          <div class="form-actions">
+            <button id="btn-gist-connect" class="btn-primary">Connect</button>
           </div>
           <span id="sync-setup-status" class="fetch-status"></span>
         </div>
         <div id="sync-connected" style="display:none;">
-          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.5rem;">
-            Connected to GitHub Gist. Auto-sync is active.
+          <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:0.3rem;">
+            Connected. Auto-sync is active.
           </p>
-          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></p>
+          <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.5rem;"></p>
+          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:1rem;">
+            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Gist ID (enter this on other devices):</p>
+            <p id="sync-gist-id" style="color:var(--accent);font-size:0.8rem;font-family:monospace;word-break:break-all;cursor:pointer;" title="Tap to copy"></p>
+          </div>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
-            <button id="btn-gist-share" class="btn-secondary">Share Link</button>
             <button id="btn-gist-push" class="btn-secondary btn-small">Push</button>
             <button id="btn-gist-pull" class="btn-secondary btn-small">Pull</button>
             <button id="btn-gist-disconnect" class="btn-danger btn-small">Disconnect</button>
-          </div>
-          <div id="share-link-area" class="hidden" style="margin-top:0.8rem;">
-            <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:0.4rem;">Open this link on another device:</p>
-            <input type="text" id="share-link-input" readonly style="font-size:0.75rem;">
           </div>
           <span id="sync-status" class="fetch-status" style="display:block;margin-top:0.8rem;"></span>
         </div>
