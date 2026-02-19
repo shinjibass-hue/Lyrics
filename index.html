@@ -192,9 +192,13 @@ To the place I belong"></textarea>
             Connected. Auto-sync is active.
           </p>
           <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.5rem;"></p>
-          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:1rem;">
-            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Gist ID (enter this on other devices):</p>
+          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:0.5rem;">
+            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Gist ID (tap to copy):</p>
             <p id="sync-gist-id" style="color:var(--accent);font-size:0.8rem;font-family:monospace;word-break:break-all;cursor:pointer;" title="Tap to copy"></p>
+          </div>
+          <div style="background:var(--bg-primary);border-radius:var(--radius);padding:0.5rem 0.7rem;margin-bottom:1rem;">
+            <p style="color:var(--text-dim);font-size:0.7rem;margin-bottom:0.2rem;">Token (tap to copy):</p>
+            <p id="sync-token-display" style="color:var(--text-secondary);font-size:0.7rem;font-family:monospace;word-break:break-all;cursor:pointer;" title="Tap to copy"></p>
           </div>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>

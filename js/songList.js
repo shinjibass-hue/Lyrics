@@ -124,6 +124,18 @@ LyricsApp.SongListView = {
       } catch (e) {}
     });
 
+    // Copy Token on tap
+    document.getElementById("sync-token-display").addEventListener("click", function () {
+      var settings = LyricsApp.GistSync.getSettings();
+      if (!settings.token) return;
+      try {
+        navigator.clipboard.writeText(settings.token);
+        var status = document.getElementById("sync-status");
+        status.textContent = "Token copied!";
+        status.className = "fetch-status success";
+      } catch (e) {}
+    });
+
     // Sync Now
     document.getElementById("btn-gist-sync").addEventListener("click", function () {
       var status = document.getElementById("sync-status");
@@ -198,10 +210,15 @@ LyricsApp.SongListView = {
         infoEl.textContent = "Auto-sync enabled";
       }
     }
+    var settings = LyricsApp.GistSync.getSettings();
     var gistIdEl = document.getElementById("sync-gist-id");
     if (gistIdEl) {
-      var settings = LyricsApp.GistSync.getSettings();
       gistIdEl.textContent = settings.gistId || "";
+    }
+    var tokenEl = document.getElementById("sync-token-display");
+    if (tokenEl && settings.token) {
+      var t = settings.token;
+      tokenEl.textContent = t.slice(0, 7) + "..." + t.slice(-4) + "  (tap to copy full)";
     }
   },
 
