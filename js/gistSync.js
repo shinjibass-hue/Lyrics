@@ -1,10 +1,10 @@
 window.LyricsApp = window.LyricsApp || {};
 
-// Cloud sync via jsonblob.com - no auth, CORS-friendly
+// Cloud sync via Firebase Realtime Database
 LyricsApp.CloudSync = {
   SETTINGS_KEY: "country_lyrics_sync_settings",
   LAST_SYNC_KEY: "country_lyrics_last_sync",
-  API: "https://jsonblob.com/api/jsonBlob",
+  DB_URL: "https://country-lyrics-d9b76-default-rtdb.firebaseio.com",
 
   _autoSyncTimer: null,
   _autoSyncDelay: 3000,
@@ -22,11 +22,16 @@ LyricsApp.CloudSync = {
   },
 
   isConfigured: function () {
-    return !!this.getSettings().blobId;
+    return !!this.getSettings().syncId;
   },
 
+  getSyncId: function () {
+    return this.getSettings().syncId || null;
+  },
+
+  // Keep backward compat with UI code that calls getBlobId
   getBlobId: function () {
-    return this.getSettings().blobId || null;
+    return this.getSyncId();
   },
 
   getLastSyncTime: function () {
@@ -43,33 +48,44 @@ LyricsApp.CloudSync = {
     for (var i = 0; i < this._listeners.length; i++) this._listeners[i](s);
   },
 
-  // Create new blob (first device)
+  _generateId: function () {
+    var chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+    var id = "";
+    for (var i = 0; i < 8; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
+  },
+
+  _syncUrl: function (syncId) {
+    return this.DB_URL + "/sync/" + syncId + ".json";
+  },
+
+  // Create new sync (first device)
   createNew: function (callback) {
     var self = this;
+    var syncId = this._generateId();
     var data = this._buildData();
 
-    this._req("POST", this.API, data, function (err, resp, xhr) {
+    this._req("PUT", this._syncUrl(syncId), data, function (err) {
       if (err) return callback(err);
-      // blob ID is in the Location header or response
-      var loc = xhr.getResponseHeader("Location") || "";
-      var blobId = loc.split("/").pop();
-      if (!blobId) return callback("Failed to create blob");
-      self.saveSettings({ blobId: blobId });
+      self.saveSettings({ syncId: syncId });
       self._saveLastSyncTime();
-      callback(null, blobId);
+      callback(null, syncId);
     });
   },
 
-  // Join existing blob (second device)
-  join: function (blobId, callback) {
+  // Join existing sync (other devices)
+  join: function (syncId, callback) {
     var self = this;
-    blobId = blobId.trim();
-    if (!blobId) return callback("ID is empty");
+    syncId = syncId.trim().toLowerCase();
+    if (!syncId) return callback("ID is empty");
 
-    this._req("GET", this.API + "/" + blobId, null, function (err, data) {
-      if (err) return callback("ID not found");
-      self.saveSettings({ blobId: blobId });
-      if (data) self._mergeData(data);
+    this._req("GET", this._syncUrl(syncId), null, function (err, data) {
+      if (err) return callback(err);
+      if (!data || !data.songs) return callback("ID not found");
+      self.saveSettings({ syncId: syncId });
+      self._mergeData(data);
       self._saveLastSyncTime();
       callback(null);
     });
@@ -79,13 +95,13 @@ LyricsApp.CloudSync = {
   sync: function (callback) {
     if (!this.isConfigured()) return callback("Not configured");
     var self = this;
-    var blobId = this.getSettings().blobId;
+    var syncId = this.getSettings().syncId;
 
-    this._req("GET", this.API + "/" + blobId, null, function (err, data) {
+    this._req("GET", this._syncUrl(syncId), null, function (err, data) {
       if (err) return callback(err);
       if (data) self._mergeData(data);
 
-      self._req("PUT", self.API + "/" + blobId, self._buildData(), function (err2) {
+      self._req("PUT", self._syncUrl(syncId), self._buildData(), function (err2) {
         if (err2) return callback(err2);
         self._saveLastSyncTime();
         callback(null);
@@ -185,21 +201,15 @@ LyricsApp.CloudSync = {
     var opts = {
       method: method,
       mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      }
+      headers: { "Content-Type": "application/json" }
     };
     if (body) opts.body = JSON.stringify(body);
 
     fetch(url, opts)
       .then(function (resp) {
         if (!resp.ok) return callback("HTTP " + resp.status);
-        var loc = resp.headers.get("Location") || "";
-        return resp.text().then(function (text) {
-          var data = {};
-          try { data = JSON.parse(text); } catch (e) {}
-          callback(null, data, { getResponseHeader: function () { return loc; } });
+        return resp.json().then(function (data) {
+          callback(null, data);
         });
       })
       .catch(function (e) {
@@ -207,6 +217,3 @@ LyricsApp.CloudSync = {
       });
   }
 };
-
-LyricsApp.NasSync = LyricsApp.CloudSync;
-LyricsApp.GistSync = LyricsApp.CloudSync;
