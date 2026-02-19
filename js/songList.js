@@ -91,6 +91,24 @@ LyricsApp.SongListView = {
       });
     });
 
+    // Share Link
+    document.getElementById("btn-gist-share").addEventListener("click", function () {
+      var settings = LyricsApp.GistSync.getSettings();
+      if (!settings.token || !settings.gistId) return;
+      var url = window.location.origin + window.location.pathname +
+        "?token=" + encodeURIComponent(settings.token) +
+        "&gist=" + encodeURIComponent(settings.gistId);
+      var area = document.getElementById("share-link-area");
+      var input = document.getElementById("share-link-input");
+      input.value = url;
+      area.classList.remove("hidden");
+      input.select();
+      try { navigator.clipboard.writeText(url); } catch (e) {}
+      var status = document.getElementById("sync-status");
+      status.textContent = "Link copied!";
+      status.className = "fetch-status success";
+    });
+
     // Sync Now
     document.getElementById("btn-gist-sync").addEventListener("click", function () {
       var status = document.getElementById("sync-status");

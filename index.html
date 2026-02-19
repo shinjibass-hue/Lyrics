@@ -191,9 +191,14 @@ To the place I belong"></textarea>
           <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></p>
           <div class="form-actions" style="flex-wrap:wrap;gap:0.5rem;">
             <button id="btn-gist-sync" class="btn-primary">Sync Now</button>
-            <button id="btn-gist-push" class="btn-secondary">Push</button>
-            <button id="btn-gist-pull" class="btn-secondary">Pull</button>
+            <button id="btn-gist-share" class="btn-secondary">Share Link</button>
+            <button id="btn-gist-push" class="btn-secondary btn-small">Push</button>
+            <button id="btn-gist-pull" class="btn-secondary btn-small">Pull</button>
             <button id="btn-gist-disconnect" class="btn-danger btn-small">Disconnect</button>
+          </div>
+          <div id="share-link-area" class="hidden" style="margin-top:0.8rem;">
+            <p style="color:var(--text-secondary);font-size:0.8rem;margin-bottom:0.4rem;">Open this link on another device:</p>
+            <input type="text" id="share-link-input" readonly style="font-size:0.75rem;">
           </div>
           <span id="sync-status" class="fetch-status" style="display:block;margin-top:0.8rem;"></span>
         </div>

@@ -25,10 +25,25 @@ LyricsApp.App = {
       LyricsApp.App.navigate("playlists");
     });
 
+    // Check URL for shared sync settings (from another device)
+    this._checkUrlSyncParams();
+
     // Auto-sync: set up status indicator and start
     this._initAutoSync();
 
     this.navigate("song-list");
+  },
+
+  // If URL contains ?token=...&gist=..., auto-configure and clean URL
+  _checkUrlSyncParams: function () {
+    var params = new URLSearchParams(window.location.search);
+    var token = params.get("token");
+    var gistId = params.get("gist");
+    if (token && gistId && !LyricsApp.GistSync.isConfigured()) {
+      LyricsApp.GistSync.saveSettings({ token: token, gistId: gistId });
+      // Clean URL (remove params)
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   },
 
   _initAutoSync: function () {
