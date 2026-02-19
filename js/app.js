@@ -35,7 +35,7 @@ LyricsApp.App = {
     var indicator = document.getElementById("sync-indicator");
     if (!indicator) return;
 
-    LyricsApp.NasSync.onStatusChange(function (status) {
+    LyricsApp.CloudSync.onStatusChange(function (status) {
       indicator.className = "sync-indicator";
       switch (status) {
         case "syncing":
@@ -44,7 +44,7 @@ LyricsApp.App = {
           break;
         case "synced":
           indicator.classList.add("synced");
-          var t = LyricsApp.NasSync.getLastSyncTime();
+          var t = LyricsApp.CloudSync.getLastSyncTime();
           indicator.title = "Synced: " + (t ? new Date(t).toLocaleTimeString() : "just now");
           break;
         case "error":
@@ -61,9 +61,9 @@ LyricsApp.App = {
       }
     });
 
-    if (LyricsApp.NasSync.isConfigured()) {
+    if (LyricsApp.CloudSync.isConfigured()) {
       indicator.classList.remove("hidden");
-      LyricsApp.NasSync.startAutoSync();
+      LyricsApp.CloudSync.startAutoSync();
     } else {
       indicator.classList.add("hidden");
     }

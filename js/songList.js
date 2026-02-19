@@ -48,9 +48,10 @@ LyricsApp.SongListView = {
     var syncModal = document.getElementById("sync-modal");
     var syncSetup = document.getElementById("sync-setup");
     var syncConnected = document.getElementById("sync-connected");
+    var Sync = LyricsApp.CloudSync;
 
     document.getElementById("btn-sync").addEventListener("click", function () {
-      if (LyricsApp.NasSync.isConfigured()) {
+      if (Sync.isConfigured()) {
         syncSetup.style.display = "none";
         syncConnected.style.display = "block";
         self._updateSyncInfo();
@@ -65,18 +66,12 @@ LyricsApp.SongListView = {
       syncModal.classList.add("hidden");
     });
 
-    // Connect to NAS
-    document.getElementById("btn-nas-connect").addEventListener("click", function () {
-      var url = document.getElementById("input-nas-url").value.trim().replace(/\/+$/, "");
-      var account = document.getElementById("input-nas-account").value.trim();
-      var passwd = document.getElementById("input-nas-passwd").value;
-      if (!url || !account || !passwd) return;
-
+    // New (first device)
+    document.getElementById("btn-sync-new").addEventListener("click", function () {
       var status = document.getElementById("sync-status");
-      status.textContent = "Connecting...";
+      status.textContent = "Creating...";
       status.className = "fetch-status loading";
-
-      LyricsApp.NasSync.connect(url, account, passwd, function (err) {
+      Sync.createNew(function (err, blobId) {
         if (err) {
           status.textContent = "Error: " + err;
           status.className = "fetch-status error";
@@ -86,18 +81,40 @@ LyricsApp.SongListView = {
           syncConnected.style.display = "block";
           self._updateSyncInfo();
           document.getElementById("sync-indicator").classList.remove("hidden");
-          LyricsApp.NasSync.startAutoSync();
+          Sync.startAutoSync();
+        }
+      });
+    });
+
+    // Join (second device)
+    document.getElementById("btn-sync-join").addEventListener("click", function () {
+      var id = document.getElementById("input-sync-id").value.trim();
+      if (!id) return;
+      var status = document.getElementById("sync-status");
+      status.textContent = "Joining...";
+      status.className = "fetch-status loading";
+      Sync.join(id, function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "";
+          syncSetup.style.display = "none";
+          syncConnected.style.display = "block";
+          self._updateSyncInfo();
+          document.getElementById("sync-indicator").classList.remove("hidden");
+          Sync.startAutoSync();
           self.render();
         }
       });
     });
 
     // Sync Now
-    document.getElementById("btn-nas-sync").addEventListener("click", function () {
+    document.getElementById("btn-sync-now").addEventListener("click", function () {
       var status = document.getElementById("sync-status-connected");
       status.textContent = "Syncing...";
       status.className = "fetch-status loading";
-      LyricsApp.NasSync.sync(function (err) {
+      Sync.sync(function (err) {
         if (err) {
           status.textContent = "Error: " + err;
           status.className = "fetch-status error";
@@ -111,11 +128,9 @@ LyricsApp.SongListView = {
     });
 
     // Disconnect
-    document.getElementById("btn-nas-disconnect").addEventListener("click", function () {
-      LyricsApp.NasSync.disconnect();
-      document.getElementById("input-nas-url").value = "";
-      document.getElementById("input-nas-account").value = "";
-      document.getElementById("input-nas-passwd").value = "";
+    document.getElementById("btn-sync-disconnect").addEventListener("click", function () {
+      Sync.disconnect();
+      document.getElementById("input-sync-id").value = "";
       syncConnected.style.display = "none";
       syncSetup.style.display = "block";
       document.getElementById("sync-status").textContent = "";
@@ -125,9 +140,15 @@ LyricsApp.SongListView = {
   },
 
   _updateSyncInfo: function () {
+    var Sync = LyricsApp.CloudSync;
+    var idEl = document.getElementById("sync-id-display");
+    if (idEl) {
+      var bid = Sync.getBlobId();
+      idEl.textContent = bid ? "Sync ID: " + bid : "";
+    }
     var infoEl = document.getElementById("sync-last-time");
     if (infoEl) {
-      var t = LyricsApp.NasSync.getLastSyncTime();
+      var t = Sync.getLastSyncTime();
       if (t) {
         var d = new Date(t);
         infoEl.textContent = "Last sync: " + d.toLocaleDateString() + " " + d.toLocaleTimeString();

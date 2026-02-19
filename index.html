@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
@@ -167,31 +167,30 @@ To the place I belong"></textarea>
   <div id="sync-modal" class="modal hidden">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>NAS Sync</h2>
+        <h2>Sync</h2>
         <button id="btn-close-sync" class="btn-icon">&times;</button>
       </div>
       <div class="modal-body">
         <div id="sync-setup" style="display:none;">
-          <div class="form-group">
-            <input type="text" id="input-nas-url" placeholder="NAS URL (https://...)">
+          <div class="form-actions" style="margin-bottom:1rem;">
+            <button id="btn-sync-new" class="btn-primary">New (1st device)</button>
           </div>
+          <p style="color:var(--text-dim);font-size:0.8rem;margin-bottom:0.5rem;">Or enter ID from another device:</p>
           <div class="form-group">
-            <input type="text" id="input-nas-account" placeholder="Username">
-          </div>
-          <div class="form-group">
-            <input type="password" id="input-nas-passwd" placeholder="Password">
+            <input type="text" id="input-sync-id" placeholder="Sync ID">
           </div>
           <div class="form-actions">
-            <button id="btn-nas-connect" class="btn-primary">Connect</button>
+            <button id="btn-sync-join" class="btn-primary">Join</button>
           </div>
           <span id="sync-status" class="fetch-status"></span>
         </div>
         <div id="sync-connected" style="display:none;">
           <p style="color:#6a4;font-weight:bold;margin-bottom:0.5rem;">&#10003; Auto-sync ON</p>
+          <p id="sync-id-display" style="font-size:0.8rem;margin-bottom:0.3rem;"></p>
           <p id="sync-last-time" style="color:var(--text-dim);font-size:0.8rem;margin-bottom:1rem;"></p>
           <div class="form-actions">
-            <button id="btn-nas-sync" class="btn-primary">Sync Now</button>
-            <button id="btn-nas-disconnect" class="btn-danger btn-small">Disconnect</button>
+            <button id="btn-sync-now" class="btn-primary">Sync Now</button>
+            <button id="btn-sync-disconnect" class="btn-danger btn-small">Disconnect</button>
           </div>
           <span id="sync-status-connected" class="fetch-status" style="display:block;margin-top:0.5rem;"></span>
         </div>
@@ -227,14 +226,14 @@ To the place I belong"></textarea>
     </div>
   </div>
 
-  <script src="js/store.js?v=3"></script>
-  <script src="js/lyricsFetcher.js?v=3"></script>
-  <script src="js/bpmEngine.js?v=3"></script>
-  <script src="js/songList.js?v=3"></script>
-  <script src="js/songEditor.js?v=3"></script>
-  <script src="js/playlistView.js?v=3"></script>
-  <script src="js/performer.js?v=3"></script>
-  <script src="js/gistSync.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/store.js?v=4"></script>
+  <script src="js/lyricsFetcher.js?v=4"></script>
+  <script src="js/bpmEngine.js?v=4"></script>
+  <script src="js/songList.js?v=4"></script>
+  <script src="js/songEditor.js?v=4"></script>
+  <script src="js/playlistView.js?v=4"></script>
+  <script src="js/performer.js?v=4"></script>
+  <script src="js/gistSync.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

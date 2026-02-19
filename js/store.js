@@ -16,8 +16,8 @@ LyricsApp.Store = {
   _write: function (songs) {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
-      if (!this._suppressSync && LyricsApp.NasSync) {
-        LyricsApp.NasSync.scheduleSync();
+      if (!this._suppressSync && LyricsApp.CloudSync) {
+        LyricsApp.CloudSync.scheduleSync();
       }
     } catch (e) {
       alert("Storage limit reached. Please delete some songs.");
@@ -340,8 +340,8 @@ LyricsApp.PlaylistStore = {
   _write: function (playlists) {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(playlists));
-      if (!this._suppressSync && LyricsApp.NasSync) {
-        LyricsApp.NasSync.scheduleSync();
+      if (!this._suppressSync && LyricsApp.CloudSync) {
+        LyricsApp.CloudSync.scheduleSync();
       }
     } catch (e) {
       alert("Storage limit reached.");
