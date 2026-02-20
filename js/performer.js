@@ -20,6 +20,8 @@ LyricsApp.PerformerView = {
   // Section data for full mode highlighting
   _sectionSlides: [],
   _fullLyricsText: "",
+  // Lines per slide (for line mode)
+  _linesPerSlide: 1,
 
   init: function () {
     var self = this;
@@ -42,6 +44,28 @@ LyricsApp.PerformerView = {
 
     document.getElementById("btn-display-mode").addEventListener("click", function () {
       self._cycleDisplayMode();
+    });
+
+    // Lines per slide controls
+    document.getElementById("btn-lines-minus").addEventListener("click", function () {
+      self._changeLinesPerSlide(-1);
+    });
+
+    document.getElementById("btn-lines-plus").addEventListener("click", function () {
+      self._changeLinesPerSlide(1);
+    });
+
+    // Song select button
+    document.getElementById("btn-song-select").addEventListener("click", function () {
+      self._showSongPicker();
+    });
+
+    document.getElementById("btn-close-performer-picker").addEventListener("click", function () {
+      self._hideSongPicker();
+    });
+
+    document.getElementById("performer-picker-search").addEventListener("input", function () {
+      self._renderSongPickerList(this.value);
     });
   },
 
@@ -67,11 +91,15 @@ LyricsApp.PerformerView = {
       this._playlistId = null;
     }
 
+    // Load lines per slide from song data
+    this._linesPerSlide = this._song.linesPerSlide || 1;
+
     this._loadSongSlides();
 
     document.getElementById("performer-song-title").textContent = this._song.title;
     document.getElementById("performer-bpm-display").textContent = "BPM: " + this._song.bpm;
     this._updateModeButton();
+    this._updateLinesDisplay();
 
     LyricsApp.BpmEngine.configure({
       bpm: this._song.bpm,
@@ -95,7 +123,7 @@ LyricsApp.PerformerView = {
     var rawLyrics = this._song.lyrics;
 
     if (mode === "line") {
-      this._slides = LyricsApp.Store.parseLyrics(rawLyrics);
+      this._slides = LyricsApp.Store.parseLyricsNLines(rawLyrics, this._linesPerSlide);
     } else if (mode === "section") {
       this._slides = LyricsApp.Store.parseLyricsSections(rawLyrics);
     } else if (mode === "two-sections") {
@@ -115,6 +143,7 @@ LyricsApp.PerformerView = {
     LyricsApp.BpmEngine.stop();
     this._unbindEvents();
     this._exitFullscreen();
+    this._hideSongPicker();
     var plId = this._playlistId;
     this._playlistSongIds = null;
     this._playlistIndex = -1;
@@ -132,6 +161,7 @@ LyricsApp.PerformerView = {
     idx = (idx + 1) % this._modes.length;
     this._displayMode = this._modes[idx];
     this._updateModeButton();
+    this._updateLinesDisplay();
 
     // Reload slides for new mode
     var wasPlaying = LyricsApp.BpmEngine.isPlaying();
@@ -156,6 +186,52 @@ LyricsApp.PerformerView = {
     // Hide/show progress bar based on mode
     var progressBar = document.getElementById("progress-bar");
     progressBar.style.display = this._displayMode === "full" ? "none" : "";
+  },
+
+  _changeLinesPerSlide: function (delta) {
+    var newVal = this._linesPerSlide + delta;
+    if (newVal < 1) newVal = 1;
+    if (newVal > 10) newVal = 10;
+    if (newVal === this._linesPerSlide) return;
+
+    this._linesPerSlide = newVal;
+    this._updateLinesDisplay();
+
+    // Save to song data
+    LyricsApp.Store.updateField(this._song.id, "linesPerSlide", newVal);
+    this._song.linesPerSlide = newVal;
+
+    // Reload slides
+    var wasPlaying = LyricsApp.BpmEngine.isPlaying();
+    LyricsApp.BpmEngine.stop();
+
+    this._loadSongSlides();
+
+    var self = this;
+    LyricsApp.BpmEngine.configure({
+      bpm: this._song.bpm,
+      beatsPerLine: this._song.beatsPerLine,
+      slides: this._slides,
+      mode: this._displayMode,
+      onAdvance: function (index) { self._renderSlide(index); },
+      onProgress: function (fraction) { self._updateProgress(fraction); },
+      onEnd: function () { self._onPlaybackEnd(); }
+    });
+
+    this._renderSlide(0);
+    this._updatePlayButton();
+  },
+
+  _updateLinesDisplay: function () {
+    var control = document.getElementById("lines-per-slide-control");
+    var display = document.getElementById("lines-per-slide-display");
+    // Only show in line mode
+    if (this._displayMode === "line") {
+      control.style.display = "";
+      display.textContent = this._linesPerSlide + "L";
+    } else {
+      control.style.display = "none";
+    }
   },
 
   _updateModeButton: function () {
@@ -232,23 +308,46 @@ LyricsApp.PerformerView = {
 
     currentEl.style.fontSize = "";
     currentEl.style.transform = "";
-    currentEl.classList.toggle("long-text", text.length > 40);
-    currentEl.classList.remove("fade-in");
-    void currentEl.offsetWidth;
-    currentEl.classList.add("fade-in");
-    currentEl.textContent = text;
+
+    // For multi-line slides, render with <br> tags
+    if (text.indexOf("\n") !== -1) {
+      var lines = text.split("\n");
+      currentEl.innerHTML = "";
+      currentEl.classList.remove("long-text", "fade-in");
+      void currentEl.offsetWidth;
+      currentEl.classList.add("fade-in");
+      for (var i = 0; i < lines.length; i++) {
+        if (i > 0) currentEl.appendChild(document.createElement("br"));
+        currentEl.appendChild(document.createTextNode(lines[i]));
+      }
+      // Auto-size for multi-line: use long-text if many lines or chars
+      var totalChars = text.replace(/\n/g, "").length;
+      currentEl.classList.toggle("long-text", lines.length > 3 || totalChars > 80);
+    } else {
+      currentEl.classList.toggle("long-text", text.length > 40);
+      currentEl.classList.remove("fade-in");
+      void currentEl.offsetWidth;
+      currentEl.classList.add("fade-in");
+      currentEl.textContent = text;
+    }
 
     var nextSlide = this._slides[index + 1];
     if (nextSlide) {
-      nextEl.textContent = nextSlide.sectionBreak ? "" : nextSlide.text;
+      var nextText = nextSlide.sectionBreak ? "" : nextSlide.text;
+      // For multi-line next preview, show first line only
+      if (nextText.indexOf("\n") !== -1) {
+        nextEl.textContent = nextText.split("\n")[0];
+      } else {
+        nextEl.textContent = nextText;
+      }
     } else {
       nextEl.textContent = "";
     }
 
     var total = this._slides.filter(function (s) { return !s.sectionBreak; }).length;
     var current = 0;
-    for (var i = 0; i <= index; i++) {
-      if (!this._slides[i].sectionBreak) current++;
+    for (var j = 0; j <= index; j++) {
+      if (!this._slides[j].sectionBreak) current++;
     }
     counterEl.textContent = current + " / " + total;
   },
@@ -444,6 +543,78 @@ LyricsApp.PerformerView = {
     document.getElementById("progress-fill").style.width = "100%";
   },
 
+  // Song Picker
+  _showSongPicker: function () {
+    var wasPlaying = LyricsApp.BpmEngine.isPlaying();
+    if (wasPlaying) LyricsApp.BpmEngine.pause();
+
+    document.getElementById("performer-song-picker").classList.remove("hidden");
+    document.getElementById("performer-picker-search").value = "";
+    this._renderSongPickerList("");
+    this._updatePlayButton();
+  },
+
+  _hideSongPicker: function () {
+    document.getElementById("performer-song-picker").classList.add("hidden");
+  },
+
+  _renderSongPickerList: function (query) {
+    var listEl = document.getElementById("performer-picker-list");
+    listEl.innerHTML = "";
+
+    var songs;
+    if (this._playlistSongIds && this._playlistSongIds.length > 0) {
+      // In playlist mode, show playlist songs
+      var self = this;
+      songs = [];
+      for (var p = 0; p < this._playlistSongIds.length; p++) {
+        var s = LyricsApp.Store.getById(this._playlistSongIds[p]);
+        if (s) songs.push(s);
+      }
+    } else {
+      songs = LyricsApp.Store.getAll();
+    }
+
+    // Filter by query
+    if (query && query.trim()) {
+      var q = query.trim().toLowerCase();
+      songs = songs.filter(function (song) {
+        return song.title.toLowerCase().indexOf(q) !== -1 ||
+               song.artist.toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    var self = this;
+    for (var i = 0; i < songs.length; i++) {
+      (function (song) {
+        var li = document.createElement("li");
+        li.className = "picker-item";
+        if (self._song && song.id === self._song.id) {
+          li.classList.add("picker-item-added");
+        }
+
+        var info = document.createElement("span");
+        info.className = "picker-item-info";
+        var titleSpan = document.createElement("span");
+        titleSpan.className = "picker-item-title";
+        titleSpan.textContent = song.title;
+        var artistSpan = document.createElement("span");
+        artistSpan.className = "picker-item-artist";
+        artistSpan.textContent = song.artist ? " - " + song.artist : "";
+        info.appendChild(titleSpan);
+        info.appendChild(artistSpan);
+        li.appendChild(info);
+
+        li.addEventListener("click", function () {
+          self._hideSongPicker();
+          self.show(song.id, self._playlistId);
+        });
+
+        listEl.appendChild(li);
+      })(songs[i]);
+    }
+  },
+
   _showControls: function () {
     var controls = document.getElementById("performer-controls");
     var progressBar = document.getElementById("progress-bar");
@@ -484,7 +655,12 @@ LyricsApp.PerformerView = {
           break;
         case "Escape":
           e.preventDefault();
-          self.exit();
+          // If song picker is open, close it first
+          if (!document.getElementById("performer-song-picker").classList.contains("hidden")) {
+            self._hideSongPicker();
+          } else {
+            self.exit();
+          }
           break;
         case "KeyM":
           e.preventDefault();

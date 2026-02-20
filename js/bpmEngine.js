@@ -35,9 +35,14 @@ LyricsApp.BpmEngine = {
     var baseMsPerLine = (60000 / this._bpm) * this._beatsPerLine;
 
     if (this._mode === "line") {
+      var lineSlide = this._slides[this._currentIndex];
       // Section breaks get half duration
-      if (this._slides[this._currentIndex] && this._slides[this._currentIndex].sectionBreak) {
+      if (lineSlide && lineSlide.sectionBreak) {
         return baseMsPerLine * 0.5;
+      }
+      // Multi-line slides: scale duration by line count
+      if (lineSlide && lineSlide.lineCount && lineSlide.lineCount > 1) {
+        return baseMsPerLine * lineSlide.lineCount;
       }
       return baseMsPerLine;
     }

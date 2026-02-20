@@ -33,6 +33,7 @@ LyricsApp.SongEditorView = {
     var inputArtist = document.getElementById("input-artist");
     var inputBpm = document.getElementById("input-bpm");
     var inputBeats = document.getElementById("input-beats-per-line");
+    var inputLinesPerSlide = document.getElementById("input-lines-per-slide");
     var inputLyrics = document.getElementById("input-lyrics");
 
     if (this._currentSongId) {
@@ -43,6 +44,7 @@ LyricsApp.SongEditorView = {
         inputArtist.value = song.artist;
         inputBpm.value = song.bpm;
         inputBeats.value = song.beatsPerLine;
+        inputLinesPerSlide.value = song.linesPerSlide || 1;
         inputLyrics.value = song.lyrics;
         deleteBtn.hidden = false;
       }
@@ -52,6 +54,7 @@ LyricsApp.SongEditorView = {
       inputArtist.value = "";
       inputBpm.value = "120";
       inputBeats.value = "8";
+      inputLinesPerSlide.value = "1";
       inputLyrics.value = "";
       deleteBtn.hidden = true;
     }
@@ -63,6 +66,7 @@ LyricsApp.SongEditorView = {
       artist: document.getElementById("input-artist").value,
       bpm: document.getElementById("input-bpm").value,
       beatsPerLine: document.getElementById("input-beats-per-line").value,
+      linesPerSlide: document.getElementById("input-lines-per-slide").value,
       lyrics: document.getElementById("input-lyrics").value
     };
 

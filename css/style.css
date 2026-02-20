@@ -869,5 +869,63 @@ textarea {
   margin-bottom: 0.4rem;
 }
 
-/* ===== 14. Utilities ===== */
+/* ===== 14. Lines per Slide Control ===== */
+.lines-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.btn-lines {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), border-color var(--transition);
+  padding: 0;
+  line-height: 1;
+}
+.btn-lines:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent);
+}
+.lines-display {
+  font-size: 0.75rem;
+  color: var(--accent);
+  min-width: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* ===== 15. Performer Song Picker ===== */
+#performer-song-picker {
+  z-index: 150;
+}
+#performer-song-picker .modal-content {
+  max-height: 70vh;
+}
+#performer-picker-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+#performer-picker-list .picker-item {
+  cursor: pointer;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+#performer-picker-list .picker-item:hover {
+  background: var(--bg-card-hover);
+}
+
+/* ===== 16. Utilities ===== */
 .hidden { display: none !important; }

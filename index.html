@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -67,6 +67,11 @@
             <label for="input-beats-per-line">Beats per Line</label>
             <input type="number" id="input-beats-per-line" min="1" max="64" value="8">
             <span class="hint">How many beats before next line</span>
+          </div>
+          <div class="form-group">
+            <label for="input-lines-per-slide">Lines / Slide</label>
+            <input type="number" id="input-lines-per-slide" min="1" max="10" value="1">
+            <span class="hint">1スライドに表示する行数</span>
           </div>
         </div>
         <div class="form-group">
@@ -215,6 +220,7 @@ To the place I belong"></textarea>
     </div>
     <div id="performer-controls" class="performer-controls">
       <button id="btn-exit-performer" class="btn-icon" title="Exit">&times;</button>
+      <button id="btn-song-select" class="btn-mode" title="Select Song">&#9776;</button>
       <span id="performer-song-title" class="performer-song-title"></span>
       <div class="performer-control-group">
         <button id="btn-prev-line" class="btn-icon" title="Previous">&#9664;</button>
@@ -222,18 +228,37 @@ To the place I belong"></textarea>
         <button id="btn-next-line" class="btn-icon" title="Next">&#9654;&#9654;</button>
       </div>
       <button id="btn-display-mode" class="btn-mode" title="Display Mode (M)">Line</button>
+      <span id="lines-per-slide-control" class="lines-control">
+        <button id="btn-lines-minus" class="btn-lines" title="Decrease lines">-</button>
+        <span id="lines-per-slide-display" class="lines-display">1L</span>
+        <button id="btn-lines-plus" class="btn-lines" title="Increase lines">+</button>
+      </span>
       <span id="performer-bpm-display" class="bpm-display">BPM: 120</span>
     </div>
   </div>
 
-  <script src="js/store.js?v=4"></script>
-  <script src="js/lyricsFetcher.js?v=4"></script>
-  <script src="js/bpmEngine.js?v=4"></script>
-  <script src="js/songList.js?v=4"></script>
-  <script src="js/songEditor.js?v=4"></script>
-  <script src="js/playlistView.js?v=4"></script>
-  <script src="js/performer.js?v=4"></script>
-  <script src="js/gistSync.js?v=6"></script>
-  <script src="js/app.js?v=4"></script>
+  <!-- Performer Song Picker Modal -->
+  <div id="performer-song-picker" class="modal hidden" style="z-index:150;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Select Song</h2>
+        <button id="btn-close-performer-picker" class="btn-icon">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="performer-picker-search" placeholder="Search songs...">
+        <ul id="performer-picker-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/store.js?v=5"></script>
+  <script src="js/lyricsFetcher.js?v=5"></script>
+  <script src="js/bpmEngine.js?v=5"></script>
+  <script src="js/songList.js?v=5"></script>
+  <script src="js/songEditor.js?v=5"></script>
+  <script src="js/playlistView.js?v=5"></script>
+  <script src="js/performer.js?v=5"></script>
+  <script src="js/gistSync.js?v=7"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

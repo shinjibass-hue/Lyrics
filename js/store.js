@@ -72,6 +72,7 @@ LyricsApp.Store = {
       artist: (data.artist || "").trim(),
       bpm: Math.max(1, Math.min(300, parseInt(data.bpm, 10) || 120)),
       beatsPerLine: Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8)),
+      linesPerSlide: Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1)),
       lyrics: data.lyrics || "",
       order: maxOrder,
       createdAt: now,
@@ -90,7 +91,21 @@ LyricsApp.Store = {
         songs[i].artist = (data.artist || "").trim();
         songs[i].bpm = Math.max(1, Math.min(300, parseInt(data.bpm, 10) || 120));
         songs[i].beatsPerLine = Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8));
+        songs[i].linesPerSlide = Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1));
         songs[i].lyrics = data.lyrics || "";
+        songs[i].updatedAt = Date.now();
+        this._write(songs);
+        return songs[i];
+      }
+    }
+    return null;
+  },
+
+  updateField: function (id, field, value) {
+    var songs = this._read();
+    for (var i = 0; i < songs.length; i++) {
+      if (songs[i].id === id) {
+        songs[i][field] = value;
         songs[i].updatedAt = Date.now();
         this._write(songs);
         return songs[i];
@@ -280,6 +295,30 @@ LyricsApp.Store = {
         if (text) {
           slides.push({ text: text, sectionBreak: false });
         }
+      }
+    }
+    return slides;
+  },
+
+  // Parse lyrics into N-line slides
+  parseLyricsNLines: function (rawText, n) {
+    if (!n || n <= 1) return this.parseLyrics(rawText);
+    if (!rawText || !rawText.trim()) return [];
+    var sections = rawText.split(/\n\n+/);
+    var slides = [];
+    for (var s = 0; s < sections.length; s++) {
+      if (s > 0) {
+        slides.push({ text: "", lineCount: 1, sectionBreak: true });
+      }
+      var lines = sections[s].split(/\n/);
+      var cleanLines = [];
+      for (var l = 0; l < lines.length; l++) {
+        var text = lines[l].trim();
+        if (text) cleanLines.push(text);
+      }
+      for (var i = 0; i < cleanLines.length; i += n) {
+        var chunk = cleanLines.slice(i, Math.min(i + n, cleanLines.length));
+        slides.push({ text: chunk.join("\n"), lineCount: chunk.length, sectionBreak: false });
       }
     }
     return slides;
