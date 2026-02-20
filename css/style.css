@@ -669,8 +669,61 @@ textarea {
   }
   .main-content { padding: 0.8rem 0.6rem; }
   .form-row { flex-direction: column; gap: 0; }
-  .lyrics-current { font-size: clamp(1.5rem, 10vw, 4rem); }
-  .performer-controls { padding: 0.5rem 0.8rem; gap: 0.5rem; }
+  /* Performance screen mobile adjustments */
+  .lyrics-display { padding: 1rem 0.8rem; }
+  .lyrics-current {
+    font-size: clamp(1.4rem, 8vw, 3.5rem);
+    line-height: 1.4;
+  }
+  .lyrics-current.long-text {
+    font-size: clamp(1.1rem, 5.5vw, 2.5rem);
+  }
+  .lyrics-next {
+    font-size: clamp(0.8rem, 3.5vw, 1.5rem);
+    margin-top: 1rem;
+  }
+  .slide-counter {
+    top: 0.5rem;
+    right: 0.8rem;
+    font-size: 0.7rem;
+  }
+  .performer-controls {
+    padding: 0.4rem 0.5rem;
+    gap: 0.3rem;
+  }
+  .performer-song-title {
+    font-size: 0.75rem;
+  }
+  .bpm-display {
+    font-size: 0.65rem;
+  }
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+  .btn-mode {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.5rem;
+  }
+  .btn-lines {
+    width: 24px;
+    height: 24px;
+    font-size: 0.85rem;
+  }
+  .lines-display {
+    font-size: 0.65rem;
+  }
+  .progress-bar {
+    bottom: 50px;
+  }
+  /* Section mode: tighter on mobile */
+  .mode-section .lyrics-current {
+    line-height: 1.4;
+  }
+  .mode-two-sections .lyrics-current {
+    line-height: 1.4;
+  }
 
   /* Song item: stack vertically on mobile */
   .song-item {

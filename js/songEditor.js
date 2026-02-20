@@ -152,9 +152,13 @@ LyricsApp.SongEditorView = {
   _applyCandidateLyrics: function (candidate) {
     document.getElementById("input-lyrics").value = candidate.lyrics;
     document.getElementById("btn-clear-lyrics").hidden = false;
-    var artistInput = document.getElementById("input-artist");
-    if (!artistInput.value.trim() && candidate.artistName) {
-      artistInput.value = candidate.artistName;
+    // Update title to match the selected candidate
+    if (candidate.trackName) {
+      document.getElementById("input-title").value = candidate.trackName;
+    }
+    // Update artist to match the selected candidate
+    if (candidate.artistName) {
+      document.getElementById("input-artist").value = candidate.artistName;
     }
   },
 
