@@ -23,6 +23,12 @@ LyricsApp.SongEditorView = {
       self._handleFetchLyrics();
     });
 
+    document.getElementById("btn-clear-lyrics").addEventListener("click", function () {
+      document.getElementById("input-lyrics").value = "";
+      document.getElementById("btn-clear-lyrics").hidden = true;
+      document.getElementById("fetch-lyrics-status").textContent = "";
+    });
+
     document.getElementById("btn-close-lyrics-results").addEventListener("click", function () {
       document.getElementById("lyrics-results-modal").classList.add("hidden");
     });
@@ -50,6 +56,7 @@ LyricsApp.SongEditorView = {
         inputBeats.value = song.beatsPerLine;
         inputLinesPerSlide.value = song.linesPerSlide || 1;
         inputLyrics.value = song.lyrics;
+        document.getElementById("btn-clear-lyrics").hidden = !song.lyrics;
         deleteBtn.hidden = false;
       }
     } else {
@@ -60,6 +67,8 @@ LyricsApp.SongEditorView = {
       inputBeats.value = "8";
       inputLinesPerSlide.value = "1";
       inputLyrics.value = "";
+      document.getElementById("btn-clear-lyrics").hidden = true;
+      document.getElementById("fetch-lyrics-status").textContent = "";
       deleteBtn.hidden = true;
     }
   },
@@ -142,6 +151,7 @@ LyricsApp.SongEditorView = {
 
   _applyCandidateLyrics: function (candidate) {
     document.getElementById("input-lyrics").value = candidate.lyrics;
+    document.getElementById("btn-clear-lyrics").hidden = false;
     var artistInput = document.getElementById("input-artist");
     if (!artistInput.value.trim() && candidate.artistName) {
       artistInput.value = candidate.artistName;

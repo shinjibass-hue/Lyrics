@@ -358,6 +358,18 @@ textarea {
 }
 .btn-edit:hover { color: var(--accent); }
 
+.btn-delete-list {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0.3rem;
+  border-radius: 4px;
+  transition: color var(--transition);
+}
+.btn-delete-list:hover { color: var(--danger); }
+
 /* Empty State */
 .empty-state {
   text-align: center;

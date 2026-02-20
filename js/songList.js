@@ -236,9 +236,22 @@ LyricsApp.SongListView = {
       LyricsApp.App.navigate("song-editor", { songId: song.id });
     });
 
+    var deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn-delete-list";
+    deleteBtn.innerHTML = "&#10005;";
+    deleteBtn.title = "Delete";
+    deleteBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (confirm("Delete \"" + song.title + "\"?")) {
+        LyricsApp.Store.delete(song.id);
+        self.render(document.getElementById("search-input").value);
+      }
+    });
+
     meta.appendChild(badge);
     meta.appendChild(addPlBtn);
     meta.appendChild(editBtn);
+    meta.appendChild(deleteBtn);
 
     // Reorder buttons
     var reorderBtns = document.createElement("div");
@@ -282,7 +295,8 @@ LyricsApp.SongListView = {
 
     li.addEventListener("click", function (e) {
       if (e.target.closest(".drag-handle") || e.target.closest(".btn-edit") ||
-          e.target.closest(".reorder-buttons") || e.target.closest(".btn-add-to-pl")) return;
+          e.target.closest(".reorder-buttons") || e.target.closest(".btn-add-to-pl") ||
+          e.target.closest(".btn-delete-list")) return;
       LyricsApp.App.navigate("performer", { songId: song.id });
     });
 
