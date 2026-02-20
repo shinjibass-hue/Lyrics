@@ -927,5 +927,43 @@ textarea {
   background: var(--bg-card-hover);
 }
 
-/* ===== 16. Utilities ===== */
+/* ===== 16. Lyrics Search Results ===== */
+#lyrics-results-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.lyrics-result-item {
+  cursor: pointer;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  transition: background var(--transition), border-color var(--transition);
+}
+.lyrics-result-item:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent);
+}
+.lyrics-result-title {
+  font-weight: bold;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.lyrics-result-detail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.15rem;
+}
+.lyrics-result-preview {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.3rem;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 17. Utilities ===== */
 .hidden { display: none !important; }

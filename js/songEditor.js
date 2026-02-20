@@ -22,6 +22,10 @@ LyricsApp.SongEditorView = {
     document.getElementById("btn-fetch-lyrics").addEventListener("click", function () {
       self._handleFetchLyrics();
     });
+
+    document.getElementById("btn-close-lyrics-results").addEventListener("click", function () {
+      document.getElementById("lyrics-results-modal").classList.add("hidden");
+    });
   },
 
   show: function (songId) {
@@ -104,23 +108,99 @@ LyricsApp.SongEditorView = {
     statusEl.textContent = "Searching...";
     statusEl.className = "fetch-status loading";
 
-    LyricsApp.LyricsFetcher.fetchFull(title, artist)
-      .then(function (info) {
-        document.getElementById("input-lyrics").value = info.lyrics;
-        // Auto-fill artist if empty
-        var artistInput = document.getElementById("input-artist");
-        if (!artistInput.value.trim() && info.artistName) {
-          artistInput.value = info.artistName;
+    var self = this;
+    LyricsApp.LyricsFetcher.fetchCandidates(title, artist)
+      .then(function (candidates) {
+        if (!candidates || candidates.length === 0) {
+          statusEl.textContent = "Not found";
+          statusEl.className = "fetch-status error";
+          btn.disabled = false;
+          return;
         }
-        statusEl.textContent = "Found! (" + info.artistName + ")";
+
+        if (candidates.length === 1) {
+          // Only one result - use it directly
+          self._applyCandidateLyrics(candidates[0]);
+          statusEl.textContent = "Found! (" + candidates[0].artistName + ")";
+          statusEl.className = "fetch-status success";
+          btn.disabled = false;
+          return;
+        }
+
+        // Multiple results - show picker modal
+        statusEl.textContent = candidates.length + " results found";
         statusEl.className = "fetch-status success";
+        btn.disabled = false;
+        self._showLyricsResultsModal(candidates);
       })
-      .catch(function (err) {
+      .catch(function () {
         statusEl.textContent = "Not found";
         statusEl.className = "fetch-status error";
-      })
-      .then(function () {
         btn.disabled = false;
       });
+  },
+
+  _applyCandidateLyrics: function (candidate) {
+    document.getElementById("input-lyrics").value = candidate.lyrics;
+    var artistInput = document.getElementById("input-artist");
+    if (!artistInput.value.trim() && candidate.artistName) {
+      artistInput.value = candidate.artistName;
+    }
+  },
+
+  _showLyricsResultsModal: function (candidates) {
+    var modal = document.getElementById("lyrics-results-modal");
+    var listEl = document.getElementById("lyrics-results-list");
+    listEl.innerHTML = "";
+
+    var self = this;
+    for (var i = 0; i < candidates.length; i++) {
+      (function (candidate, index) {
+        var li = document.createElement("li");
+        li.className = "picker-item lyrics-result-item";
+
+        var info = document.createElement("div");
+        info.className = "lyrics-result-info";
+
+        var titleLine = document.createElement("div");
+        titleLine.className = "lyrics-result-title";
+        titleLine.textContent = candidate.trackName || "(Unknown Title)";
+        info.appendChild(titleLine);
+
+        var detailLine = document.createElement("div");
+        detailLine.className = "lyrics-result-detail";
+        var parts = [];
+        if (candidate.artistName) parts.push(candidate.artistName);
+        if (candidate.albumName) parts.push(candidate.albumName);
+        if (candidate.duration) {
+          var min = Math.floor(candidate.duration / 60);
+          var sec = candidate.duration % 60;
+          parts.push(min + ":" + (sec < 10 ? "0" : "") + sec);
+        }
+        detailLine.textContent = parts.join(" / ");
+        info.appendChild(detailLine);
+
+        var preview = document.createElement("div");
+        preview.className = "lyrics-result-preview";
+        var previewText = candidate.lyrics.substring(0, 80).replace(/\n/g, " ");
+        if (candidate.lyrics.length > 80) previewText += "...";
+        preview.textContent = previewText;
+        info.appendChild(preview);
+
+        li.appendChild(info);
+
+        li.addEventListener("click", function () {
+          self._applyCandidateLyrics(candidate);
+          modal.classList.add("hidden");
+          var statusEl = document.getElementById("fetch-lyrics-status");
+          statusEl.textContent = "Selected: " + candidate.artistName + " - " + candidate.trackName;
+          statusEl.className = "fetch-status success";
+        });
+
+        listEl.appendChild(li);
+      })(candidates[i], i);
+    }
+
+    modal.classList.remove("hidden");
   }
 };
