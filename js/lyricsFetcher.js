@@ -10,13 +10,32 @@ LyricsApp.LyricsFetcher = {
     });
   },
 
-  // Returns full info: { artistName, lyrics, duration }
-  fetchFull: function (title, artist) {
-    var url = this.API_BASE +
-      "?track_name=" + encodeURIComponent(title);
-    if (artist) {
-      url += "&artist_name=" + encodeURIComponent(artist);
+  // Extract best result with plainLyrics
+  _pickBest: function (results) {
+    if (!results || results.length === 0) return null;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].plainLyrics) {
+        return {
+          artistName: results[i].artistName || "",
+          lyrics: results[i].plainLyrics,
+          duration: results[i].duration || 0,
+          albumName: results[i].albumName || "",
+          trackName: results[i].trackName || results[i].name || ""
+        };
+      }
     }
+    return null;
+  },
+
+  // Search API with given params, returns promise of results array
+  _searchAPI: function (params) {
+    var parts = [];
+    for (var key in params) {
+      if (params[key]) {
+        parts.push(key + "=" + encodeURIComponent(params[key]));
+      }
+    }
+    var url = this.API_BASE + "?" + parts.join("&");
 
     return window.fetch(url)
       .then(function (res) {
@@ -24,21 +43,69 @@ LyricsApp.LyricsFetcher = {
         return res.json();
       })
       .then(function (results) {
-        if (!results || results.length === 0) {
-          throw new Error("No lyrics found");
+        return results || [];
+      })
+      .catch(function () {
+        return [];
+      });
+  },
+
+  // Returns full info: { artistName, lyrics, duration }
+  // Tries multiple search strategies for better matching
+  fetchFull: function (title, artist) {
+    var self = this;
+
+    // Strategy 1: exact track_name + artist_name
+    return this._searchAPI({ track_name: title, artist_name: artist })
+      .then(function (results) {
+        var best = self._pickBest(results);
+        if (best) return best;
+
+        // Strategy 2: track_name only (drop artist)
+        if (artist) {
+          return self._searchAPI({ track_name: title })
+            .then(function (results2) {
+              var best2 = self._pickBest(results2);
+              if (best2) return best2;
+              return null;
+            });
         }
-        // Find best match: prefer one with plainLyrics
-        for (var i = 0; i < results.length; i++) {
-          if (results[i].plainLyrics) {
-            return {
-              artistName: results[i].artistName || "",
-              lyrics: results[i].plainLyrics,
-              duration: results[i].duration || 0,
-              albumName: results[i].albumName || "",
-              trackName: results[i].trackName || results[i].name || ""
-            };
-          }
+        return null;
+      })
+      .then(function (result) {
+        if (result) return result;
+
+        // Strategy 3: free-text search with "q" param (fuzzy)
+        var q = title;
+        if (artist) q = artist + " " + title;
+        return self._searchAPI({ q: q })
+          .then(function (results3) {
+            var best3 = self._pickBest(results3);
+            if (best3) return best3;
+            return null;
+          });
+      })
+      .then(function (result) {
+        if (result) return result;
+
+        // Strategy 4: simplified title (remove parentheses, punctuation)
+        var simplified = title
+          .replace(/\(.*?\)/g, "")
+          .replace(/\[.*?\]/g, "")
+          .replace(/['']/g, "'")
+          .replace(/[^a-zA-Z0-9\s']/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        if (simplified && simplified !== title) {
+          return self._searchAPI({ q: simplified })
+            .then(function (results4) {
+              var best4 = self._pickBest(results4);
+              if (best4) return best4;
+              throw new Error("No lyrics found");
+            });
         }
+
         throw new Error("No lyrics found");
       });
   },
@@ -55,6 +122,7 @@ LyricsApp.LyricsFetcher = {
           artist: song.artist || info.artistName,
           bpm: song.bpm,
           beatsPerLine: song.beatsPerLine,
+          linesPerSlide: song.linesPerSlide || 1,
           lyrics: info.lyrics
         });
         return info.lyrics;
