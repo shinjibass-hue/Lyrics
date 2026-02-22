@@ -232,7 +232,7 @@ LyricsApp.CloudSync = {
     return {
       version: 1,
       syncedAt: new Date().toISOString(),
-      songs: LyricsApp.Store.getAll(),
+      songs: LyricsApp.Store.getAllIncludingDeleted(),
       playlists: LyricsApp.PlaylistStore.getAll()
     };
   },

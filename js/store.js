@@ -24,8 +24,9 @@ LyricsApp.Store = {
     }
   },
 
+  // Get all songs (excluding soft-deleted)
   getAll: function () {
-    var songs = this._read();
+    var songs = this._read().filter(function (s) { return !s.deleted; });
     // Sort by order field if present, otherwise by createdAt
     songs.sort(function (a, b) {
       var oa = (typeof a.order === "number") ? a.order : 99999;
@@ -34,6 +35,11 @@ LyricsApp.Store = {
       return a.createdAt - b.createdAt;
     });
     return songs;
+  },
+
+  // Get all songs including deleted (for sync)
+  getAllIncludingDeleted: function () {
+    return this._read();
   },
 
   reorder: function (fromIndex, toIndex) {
@@ -115,7 +121,14 @@ LyricsApp.Store = {
   },
 
   delete: function (id) {
-    var songs = this._read().filter(function (s) { return s.id !== id; });
+    var songs = this._read();
+    for (var i = 0; i < songs.length; i++) {
+      if (songs[i].id === id) {
+        songs[i].deleted = true;
+        songs[i].updatedAt = Date.now();
+        break;
+      }
+    }
     this._write(songs);
   },
 
