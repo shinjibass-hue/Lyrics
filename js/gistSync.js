@@ -1,6 +1,6 @@
 window.LyricsApp = window.LyricsApp || {};
 
-// Cloud sync via Firebase Realtime Database
+// Cloud sync via Firebase Realtime Database (with Anonymous Auth)
 LyricsApp.CloudSync = {
   SETTINGS_KEY: "country_lyrics_sync_settings",
   LAST_SYNC_KEY: "country_lyrics_last_sync",
@@ -11,6 +11,7 @@ LyricsApp.CloudSync = {
   _syncInProgress: false,
   _pendingSync: false,
   _listeners: [],
+  _firebaseInited: false,
 
   getSettings: function () {
     try { return JSON.parse(localStorage.getItem(this.SETTINGS_KEY)) || {}; }
@@ -22,6 +23,11 @@ LyricsApp.CloudSync = {
   },
 
   isConfigured: function () {
+    var s = this.getSettings();
+    return !!s.syncId && !!s.apiKey;
+  },
+
+  hasSyncId: function () {
     return !!this.getSettings().syncId;
   },
 
@@ -61,6 +67,58 @@ LyricsApp.CloudSync = {
     return this.DB_URL + "/sync/" + syncId + ".json";
   },
 
+  // Initialize Firebase App + Anonymous Auth
+  _initFirebase: function (callback) {
+    if (typeof firebase === "undefined") {
+      return callback("Firebase SDK not loaded");
+    }
+
+    var settings = this.getSettings();
+    if (!settings.apiKey) {
+      return callback("API Key not set. Open Sync settings to configure.");
+    }
+
+    // Initialize Firebase App once
+    if (!this._firebaseInited) {
+      try {
+        firebase.initializeApp({
+          apiKey: settings.apiKey,
+          authDomain: "country-lyrics-d9b76.firebaseapp.com",
+          databaseURL: this.DB_URL,
+          projectId: "country-lyrics-d9b76"
+        });
+      } catch (e) {
+        // App already initialized
+      }
+      this._firebaseInited = true;
+    }
+
+    // Sign in anonymously if not already signed in
+    var auth = firebase.auth();
+    if (auth.currentUser) {
+      return callback(null);
+    }
+
+    auth.signInAnonymously()
+      .then(function () { callback(null); })
+      .catch(function (e) { callback("Auth failed: " + e.message); });
+  },
+
+  // Get fresh ID token (auto-refreshes if expired)
+  _getToken: function (callback) {
+    var self = this;
+    this._initFirebase(function (err) {
+      if (err) return callback(err);
+      var user = firebase.auth().currentUser;
+      if (!user) return callback("Not authenticated");
+      user.getIdToken().then(function (token) {
+        callback(null, token);
+      }).catch(function (e) {
+        callback("Token error: " + e.message);
+      });
+    });
+  },
+
   // Create new sync (first device)
   createNew: function (callback) {
     var self = this;
@@ -69,7 +127,9 @@ LyricsApp.CloudSync = {
 
     this._req("PUT", this._syncUrl(syncId), data, function (err) {
       if (err) return callback(err);
-      self.saveSettings({ syncId: syncId });
+      var settings = self.getSettings();
+      settings.syncId = syncId;
+      self.saveSettings(settings);
       self._saveLastSyncTime();
       callback(null, syncId);
     });
@@ -84,7 +144,9 @@ LyricsApp.CloudSync = {
     this._req("GET", this._syncUrl(syncId), null, function (err, data) {
       if (err) return callback(err);
       if (!data || !data.songs) return callback("ID not found");
-      self.saveSettings({ syncId: syncId });
+      var settings = self.getSettings();
+      settings.syncId = syncId;
+      self.saveSettings(settings);
       self._mergeData(data);
       self._saveLastSyncTime();
       callback(null);
@@ -113,7 +175,16 @@ LyricsApp.CloudSync = {
   startAutoSync: function () {
     if (!this.isConfigured()) return;
     var self = this;
-    this._doAutoSync();
+
+    // Initialize Firebase auth first
+    this._initFirebase(function (err) {
+      if (err) {
+        self._notifyStatus("error");
+        return;
+      }
+      self._doAutoSync();
+    });
+
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible" && self.isConfigured()) self._doAutoSync();
     });
@@ -153,6 +224,7 @@ LyricsApp.CloudSync = {
     localStorage.removeItem(this.SETTINGS_KEY);
     localStorage.removeItem(this.LAST_SYNC_KEY);
     if (this._autoSyncTimer) { clearTimeout(this._autoSyncTimer); this._autoSyncTimer = null; }
+    this._firebaseInited = false;
     this._notifyStatus("disconnected");
   },
 
@@ -197,23 +269,30 @@ LyricsApp.CloudSync = {
     LyricsApp.PlaylistStore._suppressSync = false;
   },
 
+  // HTTP request with Firebase Auth token
   _req: function (method, url, body, callback) {
-    var opts = {
-      method: method,
-      mode: "cors",
-      headers: { "Content-Type": "application/json" }
-    };
-    if (body) opts.body = JSON.stringify(body);
+    var self = this;
+    this._getToken(function (err, token) {
+      if (err) return callback(err);
 
-    fetch(url, opts)
-      .then(function (resp) {
-        if (!resp.ok) return callback("HTTP " + resp.status);
-        return resp.json().then(function (data) {
-          callback(null, data);
+      var authUrl = url + "?auth=" + token;
+      var opts = {
+        method: method,
+        mode: "cors",
+        headers: { "Content-Type": "application/json" }
+      };
+      if (body) opts.body = JSON.stringify(body);
+
+      fetch(authUrl, opts)
+        .then(function (resp) {
+          if (!resp.ok) return callback("HTTP " + resp.status);
+          return resp.json().then(function (data) {
+            callback(null, data);
+          });
+        })
+        .catch(function (e) {
+          callback("Network error: " + e.message);
         });
-      })
-      .catch(function (e) {
-        callback("Network error: " + e.message);
-      });
+    });
   }
 };

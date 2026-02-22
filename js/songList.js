@@ -50,8 +50,14 @@ LyricsApp.SongListView = {
     var syncConnected = document.getElementById("sync-connected");
     var Sync = LyricsApp.CloudSync;
 
+    var apiKeyInput = document.getElementById("input-api-key");
+
     document.getElementById("btn-sync").addEventListener("click", function () {
-      if (Sync.isConfigured()) {
+      // Load saved API key into input
+      var settings = Sync.getSettings();
+      apiKeyInput.value = settings.apiKey || "";
+
+      if (Sync.hasSyncId()) {
         syncSetup.style.display = "none";
         syncConnected.style.display = "block";
         self._updateSyncInfo();
@@ -68,6 +74,12 @@ LyricsApp.SongListView = {
 
     // New (first device)
     document.getElementById("btn-sync-new").addEventListener("click", function () {
+      var key = apiKeyInput.value.trim();
+      if (!key) { alert("Please enter your Firebase API Key first."); return; }
+      var settings = Sync.getSettings();
+      settings.apiKey = key;
+      Sync.saveSettings(settings);
+
       var status = document.getElementById("sync-status");
       status.textContent = "Creating...";
       status.className = "fetch-status loading";
@@ -88,6 +100,12 @@ LyricsApp.SongListView = {
 
     // Join (second device)
     document.getElementById("btn-sync-join").addEventListener("click", function () {
+      var key = apiKeyInput.value.trim();
+      if (!key) { alert("Please enter your Firebase API Key first."); return; }
+      var settings = Sync.getSettings();
+      settings.apiKey = key;
+      Sync.saveSettings(settings);
+
       var id = document.getElementById("input-sync-id").value.trim();
       if (!id) return;
       var status = document.getElementById("sync-status");
@@ -111,6 +129,13 @@ LyricsApp.SongListView = {
 
     // Sync Now
     document.getElementById("btn-sync-now").addEventListener("click", function () {
+      // Save API key if updated
+      var key = apiKeyInput.value.trim();
+      if (key) {
+        var settings = Sync.getSettings();
+        settings.apiKey = key;
+        Sync.saveSettings(settings);
+      }
       var status = document.getElementById("sync-status-connected");
       status.textContent = "Syncing...";
       status.className = "fetch-status loading";
@@ -131,6 +156,7 @@ LyricsApp.SongListView = {
     document.getElementById("btn-sync-disconnect").addEventListener("click", function () {
       Sync.disconnect();
       document.getElementById("input-sync-id").value = "";
+      apiKeyInput.value = "";
       syncConnected.style.display = "none";
       syncSetup.style.display = "block";
       document.getElementById("sync-status").textContent = "";

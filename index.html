@@ -177,6 +177,11 @@ To the place I belong"></textarea>
         <button id="btn-close-sync" class="btn-icon">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label for="input-api-key" style="font-size:0.8rem;color:var(--text-dim);">Firebase API Key</label>
+          <input type="text" id="input-api-key" placeholder="AIza...">
+          <span class="hint">Firebase Console &gt; Project Settings &gt; Web API Key</span>
+        </div>
         <div id="sync-setup" style="display:none;">
           <div class="form-actions" style="margin-bottom:1rem;">
             <button id="btn-sync-new" class="btn-primary">New (1st device)</button>
@@ -272,7 +277,9 @@ To the place I belong"></textarea>
   <script src="js/songEditor.js?v=5"></script>
   <script src="js/playlistView.js?v=5"></script>
   <script src="js/performer.js?v=5"></script>
-  <script src="js/gistSync.js?v=7"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="js/gistSync.js?v=8"></script>
   <script src="js/app.js?v=5"></script>
 </body>
 </html>
