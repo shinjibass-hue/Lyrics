@@ -152,6 +152,30 @@ LyricsApp.SongListView = {
       });
     });
 
+    // Force Push (overwrite remote with local)
+    document.getElementById("btn-sync-force-push").addEventListener("click", function () {
+      if (!confirm("Force push will overwrite remote data with local data. Continue?")) return;
+      var key = apiKeyInput.value.trim();
+      if (key) {
+        var settings = Sync.getSettings();
+        settings.apiKey = key;
+        Sync.saveSettings(settings);
+      }
+      var status = document.getElementById("sync-status-connected");
+      status.textContent = "Force pushing...";
+      status.className = "fetch-status loading";
+      Sync.forcePush(function (err) {
+        if (err) {
+          status.textContent = "Error: " + err;
+          status.className = "fetch-status error";
+        } else {
+          status.textContent = "Force push complete!";
+          status.className = "fetch-status success";
+          self._updateSyncInfo();
+        }
+      });
+    });
+
     // Disconnect
     document.getElementById("btn-sync-disconnect").addEventListener("click", function () {
       Sync.disconnect();

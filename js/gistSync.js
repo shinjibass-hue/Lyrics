@@ -237,6 +237,18 @@ LyricsApp.CloudSync = {
     };
   },
 
+  // Force push: overwrite remote with local data (no merge)
+  forcePush: function (callback) {
+    if (!this.hasSyncId()) return callback("No sync ID");
+    var self = this;
+    var syncId = this.getSettings().syncId;
+    this._req("PUT", this._syncUrl(syncId), this._buildData(), function (err) {
+      if (err) return callback(err);
+      self._saveLastSyncTime();
+      callback(null);
+    });
+  },
+
   _mergeData: function (data) {
     LyricsApp.Store._suppressSync = true;
     LyricsApp.PlaylistStore._suppressSync = true;
@@ -247,8 +259,12 @@ LyricsApp.CloudSync = {
       for (var i = 0; i < ls.length; i++) m[ls[i].id] = i;
       for (var j = 0; j < data.songs.length; j++) {
         var r = data.songs[j], idx = m[r.id];
-        if (idx === undefined) ls.push(r);
-        else if (r.updatedAt > ls[idx].updatedAt) ls[idx] = r;
+        if (idx === undefined) {
+          // Only add if not deleted on remote
+          if (!r.deleted) ls.push(r);
+        } else if (r.updatedAt > ls[idx].updatedAt) {
+          ls[idx] = r;
+        }
       }
       LyricsApp.Store._write(ls);
     }
