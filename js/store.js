@@ -141,54 +141,12 @@ LyricsApp.Store = {
     });
   },
 
-  // Seed preset country standards on first launch
+  // Seed preset outlaw country standards on first launch
   seedPresets: function () {
     var songs = this._read();
     if (songs.length > 0) return; // already has data
 
-    var presets = [
-      { title: "Ring of Fire", artist: "Johnny Cash", bpm: 108, beatsPerLine: 8 },
-      { title: "Folsom Prison Blues", artist: "Johnny Cash", bpm: 104, beatsPerLine: 8 },
-      { title: "I Walk the Line", artist: "Johnny Cash", bpm: 104, beatsPerLine: 8 },
-      { title: "Take Me Home, Country Roads", artist: "John Denver", bpm: 82, beatsPerLine: 8 },
-      { title: "Rocky Mountain High", artist: "John Denver", bpm: 76, beatsPerLine: 8 },
-      { title: "On the Road Again", artist: "Willie Nelson", bpm: 126, beatsPerLine: 8 },
-      { title: "Blue Eyes Crying in the Rain", artist: "Willie Nelson", bpm: 72, beatsPerLine: 8 },
-      { title: "Mammas Don't Let Your Babies Grow Up to Be Cowboys", artist: "Waylon Jennings & Willie Nelson", bpm: 100, beatsPerLine: 8 },
-      { title: "Friends in Low Places", artist: "Garth Brooks", bpm: 82, beatsPerLine: 8 },
-      { title: "The Dance", artist: "Garth Brooks", bpm: 68, beatsPerLine: 8 },
-      { title: "Achy Breaky Heart", artist: "Billy Ray Cyrus", bpm: 120, beatsPerLine: 8 },
-      { title: "Boot Scootin' Boogie", artist: "Brooks & Dunn", bpm: 132, beatsPerLine: 8 },
-      { title: "Chattahoochee", artist: "Alan Jackson", bpm: 138, beatsPerLine: 8 },
-      { title: "Amarillo by Morning", artist: "George Strait", bpm: 96, beatsPerLine: 8 },
-      { title: "Check Yes or No", artist: "George Strait", bpm: 120, beatsPerLine: 8 },
-      { title: "The Gambler", artist: "Kenny Rogers", bpm: 92, beatsPerLine: 8 },
-      { title: "Lucille", artist: "Kenny Rogers", bpm: 108, beatsPerLine: 8 },
-      { title: "He Stopped Loving Her Today", artist: "George Jones", bpm: 72, beatsPerLine: 8 },
-      { title: "King of the Road", artist: "Roger Miller", bpm: 120, beatsPerLine: 8 },
-      { title: "Gentle on My Mind", artist: "Glen Campbell", bpm: 112, beatsPerLine: 8 },
-      { title: "Rhinestone Cowboy", artist: "Glen Campbell", bpm: 108, beatsPerLine: 8 },
-      { title: "El Paso", artist: "Marty Robbins", bpm: 168, beatsPerLine: 8 },
-      { title: "Jambalaya (On the Bayou)", artist: "Hank Williams", bpm: 116, beatsPerLine: 8 },
-      { title: "Your Cheatin' Heart", artist: "Hank Williams", bpm: 100, beatsPerLine: 8 },
-      { title: "Hey, Good Lookin'", artist: "Hank Williams", bpm: 132, beatsPerLine: 8 },
-      { title: "I'm So Lonesome I Could Cry", artist: "Hank Williams", bpm: 72, beatsPerLine: 8 },
-      { title: "Act Naturally", artist: "Buck Owens", bpm: 128, beatsPerLine: 8 },
-      { title: "Okie from Muskogee", artist: "Merle Haggard", bpm: 100, beatsPerLine: 8 },
-      { title: "Mama Tried", artist: "Merle Haggard", bpm: 132, beatsPerLine: 8 },
-      { title: "Always on My Mind", artist: "Willie Nelson", bpm: 76, beatsPerLine: 8 },
-      { title: "Pancho and Lefty", artist: "Merle Haggard & Willie Nelson", bpm: 96, beatsPerLine: 8 },
-      { title: "Stand by Your Man", artist: "Tammy Wynette", bpm: 66, beatsPerLine: 8 },
-      { title: "Coal Miner's Daughter", artist: "Loretta Lynn", bpm: 104, beatsPerLine: 8 },
-      { title: "Crazy", artist: "Patsy Cline", bpm: 72, beatsPerLine: 8 },
-      { title: "I Fall to Pieces", artist: "Patsy Cline", bpm: 80, beatsPerLine: 8 },
-      { title: "Jolene", artist: "Dolly Parton", bpm: 112, beatsPerLine: 8 },
-      { title: "9 to 5", artist: "Dolly Parton", bpm: 120, beatsPerLine: 8 },
-      { title: "Islands in the Stream", artist: "Kenny Rogers & Dolly Parton", bpm: 100, beatsPerLine: 8 },
-      { title: "The Devil Went Down to Georgia", artist: "Charlie Daniels Band", bpm: 132, beatsPerLine: 8 },
-      { title: "Mountain Music", artist: "Alabama", bpm: 128, beatsPerLine: 8 },
-    ];
-
+    var presets = LyricsApp.Presets || [];
     var now = Date.now();
     for (var i = 0; i < presets.length; i++) {
       songs.push({
