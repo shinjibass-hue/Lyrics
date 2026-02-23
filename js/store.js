@@ -141,27 +141,44 @@ LyricsApp.Store = {
     });
   },
 
-  // Seed preset outlaw country standards on first launch
+  // Seed preset outlaw country standards (adds missing presets)
   seedPresets: function () {
     var songs = this._read();
-    if (songs.length > 0) return; // already has data
-
     var presets = LyricsApp.Presets || [];
+    if (presets.length === 0) return;
+
+    // Build lookup of existing titles (lowercase)
+    var existing = {};
+    for (var e = 0; e < songs.length; e++) {
+      existing[songs[e].title.toLowerCase()] = true;
+    }
+
+    // Find max order
+    var maxOrder = 0;
+    for (var o = 0; o < songs.length; o++) {
+      if (typeof songs[o].order === "number" && songs[o].order >= maxOrder) {
+        maxOrder = songs[o].order + 1;
+      }
+    }
+
     var now = Date.now();
+    var added = 0;
     for (var i = 0; i < presets.length; i++) {
+      if (existing[presets[i].title.toLowerCase()]) continue;
       songs.push({
-        id: "song_preset_" + i,
+        id: "song_preset_" + now + "_" + i,
         title: presets[i].title,
         artist: presets[i].artist,
         bpm: presets[i].bpm,
         beatsPerLine: presets[i].beatsPerLine,
         lyrics: "",
-        order: i,
+        order: maxOrder + added,
         createdAt: now - (presets.length - i),
         updatedAt: now - (presets.length - i)
       });
+      added++;
     }
-    this._write(songs);
+    if (added > 0) this._write(songs);
   },
 
   // Export all songs + playlists as JSON
