@@ -21,6 +21,20 @@ LyricsApp.SongListView = {
       self._handleFetchAll();
     });
 
+    // Sort mode button
+    var sortBtn = document.getElementById("btn-sort-mode");
+    var modes = ["manual", "title", "artist"];
+    var modeLabels = { manual: "Sort: Manual", title: "Sort: Title", artist: "Sort: Artist" };
+    sortBtn.textContent = modeLabels[LyricsApp.Store.getSortMode()] || modeLabels.manual;
+    sortBtn.addEventListener("click", function () {
+      var current = LyricsApp.Store.getSortMode();
+      var idx = modes.indexOf(current);
+      var next = modes[(idx + 1) % modes.length];
+      LyricsApp.Store.setSortMode(next);
+      sortBtn.textContent = modeLabels[next];
+      self.render(searchInput.value);
+    });
+
     // Export / Import
     document.getElementById("btn-export").addEventListener("click", function () {
       LyricsApp.Store.exportAll();
@@ -212,7 +226,7 @@ LyricsApp.SongListView = {
     var songs = LyricsApp.Store.search(query || "");
     var list = document.getElementById("song-list");
     var emptyState = document.getElementById("empty-state");
-    var self = this;
+    var isManual = LyricsApp.Store.getSortMode() === "manual";
 
     list.innerHTML = "";
 
@@ -221,23 +235,24 @@ LyricsApp.SongListView = {
     } else {
       emptyState.classList.add("hidden");
       for (var i = 0; i < songs.length; i++) {
-        list.appendChild(this._renderItem(songs[i], i, songs.length));
+        list.appendChild(this._renderItem(songs[i], i, songs.length, isManual));
       }
     }
   },
 
-  _renderItem: function (song, index, totalCount) {
+  _renderItem: function (song, index, totalCount, isManual) {
     var self = this;
     var li = document.createElement("li");
     li.className = "song-item";
     li.dataset.index = index;
-    li.draggable = true;
+    li.draggable = isManual;
 
     // Drag handle
     var handle = document.createElement("span");
     handle.className = "drag-handle";
     handle.innerHTML = "&#9776;";
     handle.title = "Drag to reorder";
+    if (!isManual) handle.style.display = "none";
 
     var info = document.createElement("div");
     info.className = "song-item-info";
@@ -303,9 +318,10 @@ LyricsApp.SongListView = {
     meta.appendChild(editBtn);
     meta.appendChild(deleteBtn);
 
-    // Reorder buttons
+    // Reorder buttons (only in manual mode)
     var reorderBtns = document.createElement("div");
     reorderBtns.className = "reorder-buttons";
+    if (!isManual) reorderBtns.style.display = "none";
 
     var upBtn = document.createElement("button");
     upBtn.className = "btn-move";

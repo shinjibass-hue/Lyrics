@@ -2,6 +2,7 @@ window.LyricsApp = window.LyricsApp || {};
 
 LyricsApp.Store = {
   STORAGE_KEY: "country_lyrics_songs",
+  SORT_KEY: "country_lyrics_sort_mode",
   _suppressSync: false, // true when writing from merge (prevents sync loop)
 
   _read: function () {
@@ -24,16 +25,40 @@ LyricsApp.Store = {
     }
   },
 
-  // Get all songs (excluding soft-deleted)
-  getAll: function () {
+  getSortMode: function () {
+    return localStorage.getItem(this.SORT_KEY) || "manual";
+  },
+
+  setSortMode: function (mode) {
+    localStorage.setItem(this.SORT_KEY, mode);
+  },
+
+  // Get all songs (excluding soft-deleted), sorted by current mode
+  getAll: function (sortMode) {
+    var mode = sortMode || this.getSortMode();
     var songs = this._read().filter(function (s) { return !s.deleted; });
-    // Sort by order field if present, otherwise by createdAt
-    songs.sort(function (a, b) {
-      var oa = (typeof a.order === "number") ? a.order : 99999;
-      var ob = (typeof b.order === "number") ? b.order : 99999;
-      if (oa !== ob) return oa - ob;
-      return a.createdAt - b.createdAt;
-    });
+
+    if (mode === "title") {
+      songs.sort(function (a, b) {
+        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      });
+    } else if (mode === "artist") {
+      songs.sort(function (a, b) {
+        var aa = (a.artist || "").toLowerCase();
+        var ba = (b.artist || "").toLowerCase();
+        var cmp = aa.localeCompare(ba);
+        if (cmp !== 0) return cmp;
+        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      });
+    } else {
+      // manual: sort by order field
+      songs.sort(function (a, b) {
+        var oa = (typeof a.order === "number") ? a.order : 99999;
+        var ob = (typeof b.order === "number") ? b.order : 99999;
+        if (oa !== ob) return oa - ob;
+        return a.createdAt - b.createdAt;
+      });
+    }
     return songs;
   },
 
@@ -141,16 +166,23 @@ LyricsApp.Store = {
     });
   },
 
-  // Seed preset outlaw country standards (adds missing presets)
+  // Seed preset outlaw country standards (adds missing presets with deterministic IDs)
   seedPresets: function () {
     var songs = this._read();
     var presets = LyricsApp.Presets || [];
     if (presets.length === 0) return;
 
-    // Build lookup of existing titles (lowercase)
-    var existing = {};
+    // Deduplicate existing songs first
+    this._deduplicateSongs(songs);
+
+    // Build lookup of existing IDs and titles
+    var existingIds = {};
+    var existingTitles = {};
     for (var e = 0; e < songs.length; e++) {
-      existing[songs[e].title.toLowerCase()] = true;
+      if (!songs[e].deleted) {
+        existingIds[songs[e].id] = true;
+        existingTitles[songs[e].title.toLowerCase()] = true;
+      }
     }
 
     // Find max order
@@ -164,9 +196,11 @@ LyricsApp.Store = {
     var now = Date.now();
     var added = 0;
     for (var i = 0; i < presets.length; i++) {
-      if (existing[presets[i].title.toLowerCase()]) continue;
+      var presetId = "song_preset_" + i;
+      // Skip if this preset ID already exists or title already exists
+      if (existingIds[presetId] || existingTitles[presets[i].title.toLowerCase()]) continue;
       songs.push({
-        id: "song_preset_" + now + "_" + i,
+        id: presetId,
         title: presets[i].title,
         artist: presets[i].artist,
         bpm: presets[i].bpm,
@@ -179,6 +213,54 @@ LyricsApp.Store = {
       added++;
     }
     if (added > 0) this._write(songs);
+  },
+
+  // Remove duplicate songs (keep the one with lyrics or newest updatedAt)
+  _deduplicateSongs: function (songs) {
+    var groups = {};
+    for (var i = 0; i < songs.length; i++) {
+      if (songs[i].deleted) continue;
+      var key = songs[i].title.toLowerCase() + "|||" + (songs[i].artist || "").toLowerCase();
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(i);
+    }
+
+    var changed = false;
+    var keys = Object.keys(groups);
+    for (var k = 0; k < keys.length; k++) {
+      var indices = groups[keys[k]];
+      if (indices.length <= 1) continue;
+
+      // Find best: prefer one with lyrics, then newest updatedAt
+      var bestIdx = indices[0];
+      for (var j = 1; j < indices.length; j++) {
+        var curr = songs[indices[j]];
+        var best = songs[bestIdx];
+        var currHasLyrics = curr.lyrics && curr.lyrics.trim();
+        var bestHasLyrics = best.lyrics && best.lyrics.trim();
+        if (currHasLyrics && !bestHasLyrics) {
+          bestIdx = indices[j];
+        } else if (currHasLyrics === bestHasLyrics && curr.updatedAt > best.updatedAt) {
+          bestIdx = indices[j];
+        }
+      }
+
+      // Soft-delete all except best
+      for (var d = 0; d < indices.length; d++) {
+        if (indices[d] !== bestIdx) {
+          songs[indices[d]].deleted = true;
+          songs[indices[d]].updatedAt = Date.now();
+          changed = true;
+        }
+      }
+    }
+
+    if (changed) {
+      // Write directly to avoid triggering sync during startup
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
+      } catch (e) {}
+    }
   },
 
   // Export all songs + playlists as JSON
