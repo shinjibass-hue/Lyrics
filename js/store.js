@@ -193,7 +193,8 @@ LyricsApp.Store = {
       }
     }
 
-    var now = Date.now();
+    // Fixed epoch so all devices get the same updatedAt for presets
+    var presetEpoch = 1704067200000; // 2024-01-01T00:00:00Z
     var added = 0;
     for (var i = 0; i < presets.length; i++) {
       var presetId = "song_preset_" + i;
@@ -207,8 +208,8 @@ LyricsApp.Store = {
         beatsPerLine: presets[i].beatsPerLine,
         lyrics: "",
         order: maxOrder + added,
-        createdAt: now - (presets.length - i),
-        updatedAt: now - (presets.length - i)
+        createdAt: presetEpoch + i,
+        updatedAt: presetEpoch + i
       });
       added++;
     }

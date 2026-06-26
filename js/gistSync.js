@@ -262,10 +262,39 @@ LyricsApp.CloudSync = {
         if (idx === undefined) {
           // Only add if not deleted on remote
           if (!r.deleted) ls.push(r);
-        } else if (r.updatedAt > ls[idx].updatedAt) {
-          ls[idx] = r;
+        } else {
+          // Smart merge: never lose lyrics
+          var localHasLyrics = ls[idx].lyrics && ls[idx].lyrics.trim();
+          var remoteHasLyrics = r.lyrics && r.lyrics.trim();
+          if (r.updatedAt > ls[idx].updatedAt) {
+            // Remote is newer — but carry over local lyrics if remote lost them
+            if (localHasLyrics && !remoteHasLyrics) r.lyrics = ls[idx].lyrics;
+            ls[idx] = r;
+          } else {
+            // Local is newer or same — but copy remote lyrics if local doesn't have them
+            if (remoteHasLyrics && !localHasLyrics) ls[idx].lyrics = r.lyrics;
+          }
         }
       }
+
+      // Second pass: title+artist fallback for lyrics (handles mismatched IDs)
+      var titleMap = {};
+      for (var t = 0; t < ls.length; t++) {
+        if (ls[t].deleted) continue;
+        var tKey = ls[t].title.toLowerCase() + "|||" + (ls[t].artist || "").toLowerCase();
+        if (!titleMap[tKey]) titleMap[tKey] = t;
+      }
+      for (var u = 0; u < data.songs.length; u++) {
+        var rs = data.songs[u];
+        if (rs.deleted || !rs.lyrics || !rs.lyrics.trim()) continue;
+        if (m[rs.id] !== undefined) continue; // already matched by ID
+        var rKey = rs.title.toLowerCase() + "|||" + (rs.artist || "").toLowerCase();
+        var tIdx = titleMap[rKey];
+        if (tIdx !== undefined && (!ls[tIdx].lyrics || !ls[tIdx].lyrics.trim())) {
+          ls[tIdx].lyrics = rs.lyrics;
+        }
+      }
+
       LyricsApp.Store._write(ls);
     }
 
