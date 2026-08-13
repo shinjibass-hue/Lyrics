@@ -314,6 +314,15 @@ LyricsApp.SongListView = {
       meta.appendChild(noLyrics);
     }
 
+    // 訳が入っている曲がひと目で分かるようにします。
+    if (song.lyricsJa && song.lyricsJa.trim()) {
+      var jaBadge = document.createElement("span");
+      jaBadge.className = "bpm-badge";
+      jaBadge.textContent = "訳あり";
+      jaBadge.title = song.lyricsJaSource === "manual" ? "手で直した訳" : "自動翻訳";
+      meta.appendChild(jaBadge);
+    }
+
     var badge = document.createElement("span");
     badge.className = "bpm-badge";
     badge.textContent = song.bpm + " BPM";
@@ -565,6 +574,7 @@ LyricsApp.SongListView = {
   },
 
   _translateStopFlag: false,
+  _lastSucceeded: 0,
 
   _updateTranslateUsage: function () {
     var el = document.getElementById("translate-usage");
@@ -610,25 +620,34 @@ LyricsApp.SongListView = {
       chars += LyricsApp.TranslateUsage.estimateChars(pending[i].lyrics);
     }
 
-    statusEl.textContent = "DeepL の使用量を確認中...";
+    statusEl.textContent = "翻訳エンジンを確認中...";
     statusEl.className = "fetch-status loading";
 
     // Never send a single character before the user confirms against the
     // REAL remaining quota.
     LyricsApp.TranslateUsage.fetchReal()
       .then(function (u) {
+        var engineName = u.engine === "google" ? "Google Cloud Translation"
+                       : u.engine === "ollama" ? "Ollama（この Mac の中・無料・上限なし）"
+                       : "DeepL";
         var remaining = u.limit - u.count;
-        if (chars > remaining) {
+        // Ollama は上限がないので残量の判定をしません。
+        if (u.engine !== "ollama" && chars > remaining) {
           statusEl.textContent = "残りが足りません（対象 " + pending.length + " 曲／送信 約 " +
             chars.toLocaleString() + " 文字／残り " + remaining.toLocaleString() + " 文字）";
           statusEl.className = "fetch-status error";
           return;
         }
         var msg =
+          "翻訳エンジン: " + engineName + "\n" +
           (targetsOnly ? "対象アーティストのみ\n" : "全アーティスト\n") +
-          "対象 " + pending.length + " 曲 ／ 送信する文字数 約 " + chars.toLocaleString() + " 文字\n" +
-          "今月の使用量 " + u.count.toLocaleString() + " / " + u.limit.toLocaleString() +
-          " 文字（残り " + remaining.toLocaleString() + " 文字）\n\n翻訳を実行しますか？";
+          "対象 " + pending.length + " 曲 ／ 訳す文字数 約 " + chars.toLocaleString() + " 文字\n" +
+          (u.engine === "ollama"
+            ? "枠の上限はありません。ただし時間がかかります（1曲およそ1〜2分）。\n"
+            : "今月の使用量 " + u.count.toLocaleString() + " / " + u.limit.toLocaleString() +
+              " 文字" + (u.estimated ? "（このアプリの集計値）" : "") +
+              "（残り " + remaining.toLocaleString() + " 文字）\n") +
+          "\n翻訳を実行しますか？";
         if (!confirm(msg)) {
           statusEl.textContent = "キャンセルしました（1文字も送信していません）";
           statusEl.className = "fetch-status";
@@ -667,7 +686,14 @@ LyricsApp.SongListView = {
       function (p) {
         if (!p.done) {
           statusEl.textContent = p.completed + "/" + p.total +
-            "（訳: " + p.succeeded + " / 失敗: " + p.failed + "）";
+            "（訳: " + p.succeeded + " / 失敗: " + p.failed + "）" +
+            (p.current ? " 訳し中: " + p.current : "") +
+            (p.lastFailure ? " 原因: " + p.lastFailure : "");
+          // 訳が入るたびに一覧と件数を更新します（終わるまで 0 のままに見えないように）。
+          if (p.succeeded > self._lastSucceeded) {
+            self._lastSucceeded = p.succeeded;
+            self.render();
+          }
           return;
         }
         self._updateTranslateUsage();

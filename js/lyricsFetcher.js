@@ -82,9 +82,28 @@ LyricsApp.TranslateUsage = {
           if (data && data.status !== undefined) e.status = data.status;
           throw e;
         }
+        // Ollama はこの Mac の中で動くので上限がありません。
+        // DeepL で使い切った記録が残っていても、それに引っかからないようにします。
+        if (data.engine === "ollama" || data.unlimited) {
+          LyricsApp.TranslateUsage.unlimited = true;
+          return { count: 0, limit: Infinity, engine: "ollama", estimated: false };
+        }
+        LyricsApp.TranslateUsage.unlimited = false;
+        // Google には使用量を返す API がありません。その場合だけ自前の集計を使います。
+        // 実数ではないため、画面には engine を出して分かるようにします。
+        if (data.engine === "google" || data.character_count === null) {
+          return {
+            count: LyricsApp.TranslateUsage.get(),
+            limit: data.character_limit || LyricsApp.TranslateUsage.LIMIT,
+            engine: "google",
+            estimated: true
+          };
+        }
         return {
           count: data.character_count || 0,
-          limit: data.character_limit || 0
+          limit: data.character_limit || 0,
+          engine: "deepl",
+          estimated: false
         };
       });
   }
@@ -286,14 +305,20 @@ LyricsApp.LyricsFetcher = {
     if (code === "deepl_http_error") return "DeepL でエラーが発生しました（HTTP " + status + "）";
     if (code === "length_mismatch" || (err && err.message === "length_mismatch")) return "行数が合わず保存を中止しました";
     if (code === "usage_unavailable") return "DeepL の使用量を取得できませんでした。サーバーを vault exec 経由で起動してください";
+    if (code === "google_key_missing") return "GOOGLE_TRANSLATE_KEY が渡されていません。vault exec 経由で起動してください";
+    if (code === "google_http_error" && status === 403) return "Google の鍵が無効か、Cloud Translation API が有効になっていません（HTTP 403）";
+    if (code === "google_http_error" && status === 429) return "Google の上限に達しました（HTTP 429）";
+    if (code === "google_http_error") return "Google でエラーが発生しました（HTTP " + status + "）";
     return "翻訳に失敗しました";
   },
 
-  // A fatal DeepL condition means "stop the whole run", not "skip one song".
+  // A fatal condition means "stop the whole run", not "skip one song".
   isFatalTranslateError: function (err) {
     if (!err) return false;
     if (err.code === "deepl_key_missing" || err.code === "usage_limit") return true;
     if (err.code === "deepl_http_error") return true; // incl. 456 quota
+    if (err.code === "google_key_missing") return true;
+    if (err.code === "google_http_error") return true; // 403 / 429 など
     return false;
   },
 
@@ -363,11 +388,17 @@ LyricsApp.LyricsFetcher = {
 
   // Call the local translate endpoint. Resolves with { lines, chars } or
   // rejects with an Error whose .code is set for known conditions.
-  _requestTranslation: function (lines) {
+  _requestTranslation: function (lines, meta) {
+    meta = meta || {};
     return window.fetch(this.TRANSLATE_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lines: lines })
+      // 曲名とアーティストも渡します。文脈があると訳の質が変わります。
+      body: JSON.stringify({
+        lines: lines,
+        title: meta.title || "",
+        artist: meta.artist || ""
+      })
     }).then(function (res) {
       return res.json().catch(function () { return null; });
     }).then(function (data) {
@@ -399,14 +430,17 @@ LyricsApp.LyricsFetcher = {
 
     var estimate = LyricsApp.TranslateUsage.estimateChars(song.lyrics);
     if (estimate <= 0) return Promise.resolve(null);
-    if (LyricsApp.TranslateUsage.wouldExceed(estimate)) {
+    // Ollama は上限がないので、DeepL で使い切った記録では止めません。
+    if (!LyricsApp.TranslateUsage.unlimited &&
+        LyricsApp.TranslateUsage.wouldExceed(estimate)) {
       var limitErr = new Error("usage_limit");
       limitErr.code = "usage_limit";
       return Promise.reject(limitErr);
     }
 
     var lines = song.lyrics.split(/\n/);
-    return this._requestTranslation(lines).then(function (data) {
+    return this._requestTranslation(lines, { title: song.title, artist: song.artist })
+      .then(function (data) {
       // Line correspondence is mandatory — bail without saving on mismatch.
       if (!data.lines || data.lines.length !== lines.length) {
         var mErr = new Error("length_mismatch");
@@ -425,6 +459,7 @@ LyricsApp.LyricsFetcher = {
   // shouldStop() is polled between songs to allow cancellation.
   translateAll: function (onProgress, shouldStop, targetsOnly) {
     var self = this;
+    this._lastFailure = "";  // 実行ごとに初期化します。
     var pending = this.pendingForTranslation(targetsOnly);
     var total = pending.length;
     var completed = 0, succeeded = 0, failed = 0;
@@ -434,7 +469,8 @@ LyricsApp.LyricsFetcher = {
       var base = {
         completed: completed, total: total,
         succeeded: succeeded, failed: failed,
-        chars: LyricsApp.TranslateUsage.get()
+        chars: LyricsApp.TranslateUsage.get(),
+        lastFailure: self._lastFailure || ""
       };
       for (var k in extra) base[k] = extra[k];
       onProgress(base);
@@ -455,18 +491,29 @@ LyricsApp.LyricsFetcher = {
         return Promise.resolve();
       }
       // Stop before exceeding the monthly limit.
-      if (LyricsApp.TranslateUsage.get() >= LyricsApp.TranslateUsage.LIMIT) {
+      if (!LyricsApp.TranslateUsage.unlimited &&
+          LyricsApp.TranslateUsage.get() >= LyricsApp.TranslateUsage.LIMIT) {
         report({ done: true, stopped: true, reason: "usage_limit" });
         return Promise.resolve();
       }
 
       var song = pending[index];
+      // いまどの曲を訳しているかを画面に出します。
+      report({ done: false, stopped: false, current: song.title });
       return self.translateSong(song.id)
         .then(function (ja) {
           if (ja) succeeded++; else failed++;
         })
         .catch(function (err) {
           failed++;
+          // 失敗の理由が画面に出ないと原因が追えないので、最初の1件を持ち回します。
+          if (!self._lastFailure) {
+            self._lastFailure = (err && (err.code || err.message)) || "unknown";
+            console.error("translate failed:", self._lastFailure, err);
+            // 見落とすと原因が追えないので、最初の1件だけは必ず前に出します。
+            alert("翻訳に失敗しました。\n\n原因: " + self._lastFailure +
+                  "\n\nこの文字をそのまま伝えてください。");
+          }
           if (self.isFatalTranslateError(err)) {
             // Fatal for the whole run — surface and stop.
             completed++;

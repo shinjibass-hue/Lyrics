@@ -136,8 +136,10 @@ LyricsApp.SongEditorView = {
     // Translate what is currently in the lyrics box (may be unsaved).
     var lines = inputLyrics.value.split(/\n/);
     var estimate = LyricsApp.TranslateUsage.estimateChars(inputLyrics.value);
-    if (LyricsApp.TranslateUsage.wouldExceed(estimate)) {
-      statusEl.textContent = "今月の DeepL 無料枠に達しています";
+    // Ollama は上限がないので、DeepL で使い切った記録では止めません。
+    if (!LyricsApp.TranslateUsage.unlimited &&
+        LyricsApp.TranslateUsage.wouldExceed(estimate)) {
+      statusEl.textContent = "今月の無料枠に達しています";
       statusEl.className = "fetch-status error";
       return;
     }
@@ -146,7 +148,11 @@ LyricsApp.SongEditorView = {
     statusEl.textContent = "翻訳中...";
     statusEl.className = "fetch-status loading";
 
-    LyricsApp.LyricsFetcher._requestTranslation(lines)
+    // 曲名とアーティストも渡します。文脈があると訳が変わります。
+    LyricsApp.LyricsFetcher._requestTranslation(lines, {
+      title: (document.getElementById("input-title") || {}).value || "",
+      artist: (document.getElementById("input-artist") || {}).value || ""
+    })
       .then(function (data) {
         if (!data.lines || data.lines.length !== lines.length) {
           throw new Error("length_mismatch");

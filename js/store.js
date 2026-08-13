@@ -154,12 +154,15 @@ LyricsApp.Store = {
     var songs = this._read();
     for (var i = 0; i < songs.length; i++) {
       if (songs[i].id === id) {
-        songs[i].title = data.title.trim();
-        songs[i].artist = (data.artist || "").trim();
-        songs[i].bpm = Math.max(1, Math.min(300, parseInt(data.bpm, 10) || 120));
-        songs[i].beatsPerLine = Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8));
-        songs[i].linesPerSlide = Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1));
-        songs[i].lyrics = data.lyrics || "";
+        // 渡された項目だけを更新します。渡されなかった項目は触りません。
+        // 以前は全項目を上書きしていたため、翻訳だけを保存しようとすると
+        // data.title が undefined で落ち、歌詞も空にしていました（2026-08-14 修正）。
+        if (data.title !== undefined) songs[i].title = String(data.title).trim();
+        if (data.artist !== undefined) songs[i].artist = String(data.artist || "").trim();
+        if (data.bpm !== undefined) songs[i].bpm = Math.max(1, Math.min(300, parseInt(data.bpm, 10) || 120));
+        if (data.beatsPerLine !== undefined) songs[i].beatsPerLine = Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8));
+        if (data.linesPerSlide !== undefined) songs[i].linesPerSlide = Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1));
+        if (data.lyrics !== undefined) songs[i].lyrics = data.lyrics || "";
         // Only touch translation fields when the caller provides them, so
         // lyrics-only updates (e.g. from the fetcher) never clobber a translation.
         if (data.lyricsJa !== undefined) songs[i].lyricsJa = data.lyricsJa;

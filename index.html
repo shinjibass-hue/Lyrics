@@ -28,7 +28,7 @@
         <span id="fetch-all-status" class="fetch-status"></span>
         <button id="btn-translate-all" class="btn-secondary">未訳をまとめて翻訳</button>
         <span id="translate-all-status" class="fetch-status"></span>
-        <span id="translate-usage" class="fetch-status" title="DeepL 無料枠の今月の使用量"></span>
+        <span id="translate-usage" class="fetch-status" title="いま使っている翻訳エンジンと使用量"></span>
         <label class="auto-translate-toggle" title="歌詞を取得した直後に自動で翻訳します（既定オフ）">
           <input type="checkbox" id="chk-auto-translate"> 取得時に自動翻訳
         </label>
@@ -110,11 +110,11 @@ To the place I belong"></textarea>
         <div class="form-group">
           <div class="label-row">
             <label for="input-lyrics-ja">日本語訳</label>
-            <button type="button" id="btn-translate-ja" class="btn-secondary btn-small">DeepL で訳し直す</button>
+            <button type="button" id="btn-translate-ja" class="btn-secondary btn-small">訳し直す</button>
             <span id="translate-ja-status" class="fetch-status"></span>
           </div>
           <textarea id="input-lyrics-ja" rows="15" placeholder="日本語訳（英語の各行の位置に合わせて入ります）。
-ここを手で直して保存すると、DeepL で自動上書きされなくなります。"></textarea>
+ここを手で直して保存すると、自動翻訳で上書きされなくなります。"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save</button>
@@ -295,11 +295,11 @@ To the place I belong"></textarea>
   </div>
 
   <script src="js/presets.js?v=1"></script>
-  <script src="js/store.js?v=12"></script>
-  <script src="js/lyricsFetcher.js?v=7"></script>
+  <script src="js/store.js?v=13"></script>
+  <script src="js/lyricsFetcher.js?v=11"></script>
   <script src="js/bpmEngine.js?v=6"></script>
-  <script src="js/songList.js?v=9"></script>
-  <script src="js/songEditor.js?v=7"></script>
+  <script src="js/songList.js?v=11"></script>
+  <script src="js/songEditor.js?v=8"></script>
   <script src="js/playlistView.js?v=5"></script>
   <script src="js/performer.js?v=6"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
