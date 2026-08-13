@@ -266,13 +266,34 @@ LyricsApp.CloudSync = {
           // Smart merge: never lose lyrics
           var localHasLyrics = ls[idx].lyrics && ls[idx].lyrics.trim();
           var remoteHasLyrics = r.lyrics && r.lyrics.trim();
+          // Translation fields may be absent on the other side; treat as empty.
+          var localJa = ls[idx].lyricsJa || "";
+          var localJaSrc = ls[idx].lyricsJaSource || "";
+          var remoteJa = (r.lyricsJa !== undefined && r.lyricsJa !== null) ? r.lyricsJa : "";
+          var remoteJaSrc = r.lyricsJaSource || "";
+          var localHasJa = !!localJa.trim();
+          var remoteHasJa = !!remoteJa.trim();
           if (r.updatedAt > ls[idx].updatedAt) {
             // Remote is newer — but carry over local lyrics if remote lost them
             if (localHasLyrics && !remoteHasLyrics) r.lyrics = ls[idx].lyrics;
+            // Preserve a hand-edited translation the remote never saw
+            if (localJaSrc === "manual" && localHasJa && !remoteHasJa) {
+              r.lyricsJa = localJa;
+              r.lyricsJaSource = "manual";
+            } else if (!remoteHasJa && localHasJa) {
+              // Remote lost the translation entirely; keep the local one
+              r.lyricsJa = localJa;
+              r.lyricsJaSource = localJaSrc;
+            }
             ls[idx] = r;
           } else {
             // Local is newer or same — but copy remote lyrics if local doesn't have them
             if (remoteHasLyrics && !localHasLyrics) ls[idx].lyrics = r.lyrics;
+            // Fill in a translation only if local has none (never overwrite manual)
+            if (remoteHasJa && !localHasJa) {
+              ls[idx].lyricsJa = remoteJa;
+              ls[idx].lyricsJaSource = remoteJaSrc || "deepl";
+            }
           }
         }
       }

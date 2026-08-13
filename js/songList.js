@@ -21,6 +21,11 @@ LyricsApp.SongListView = {
       self._handleFetchAll();
     });
 
+    document.getElementById("btn-translate-all").addEventListener("click", function () {
+      self._handleTranslateAll();
+    });
+    this._updateTranslateUsage();
+
     // Sort mode button
     var sortBtn = document.getElementById("btn-sort-mode");
     var modes = ["manual", "title", "artist"];
@@ -523,7 +528,79 @@ LyricsApp.SongListView = {
         statusEl.textContent = "Done! " + progress.succeeded + " found, " + progress.failed + " not found";
         btn.disabled = false;
         self.render();
+        self._updateTranslateUsage();
       }
     });
+  },
+
+  _translateStopFlag: false,
+
+  _updateTranslateUsage: function () {
+    var el = document.getElementById("translate-usage");
+    if (!el) return;
+    var used = LyricsApp.TranslateUsage.get();
+    var limit = LyricsApp.TranslateUsage.LIMIT;
+    el.textContent = "今月 " + used.toLocaleString() + " 文字 / " + limit.toLocaleString();
+    el.className = "fetch-status" + (used >= LyricsApp.TranslateUsage.WARN ? " error" : "");
+  },
+
+  _handleTranslateAll: function () {
+    var btn = document.getElementById("btn-translate-all");
+    var statusEl = document.getElementById("translate-all-status");
+    var self = this;
+
+    // If already running, this press means "stop".
+    if (this._translateRunning) {
+      this._translateStopFlag = true;
+      statusEl.textContent = "停止中...";
+      return;
+    }
+
+    if (LyricsApp.TranslateUsage.get() >= LyricsApp.TranslateUsage.LIMIT) {
+      statusEl.textContent = "今月の DeepL 無料枠に達しています";
+      statusEl.className = "fetch-status error";
+      return;
+    }
+
+    this._translateRunning = true;
+    this._translateStopFlag = false;
+    btn.textContent = "停止";
+    statusEl.textContent = "翻訳を開始します...";
+    statusEl.className = "fetch-status loading";
+
+    function finish(text, cls) {
+      self._translateRunning = false;
+      self._translateStopFlag = false;
+      btn.textContent = "未訳をまとめて翻訳";
+      statusEl.textContent = text;
+      statusEl.className = "fetch-status " + (cls || "success");
+      self._updateTranslateUsage();
+      self.render();
+    }
+
+    LyricsApp.LyricsFetcher.translateAll(
+      function (p) {
+        self._updateTranslateUsage();
+        if (LyricsApp.TranslateUsage.isWarn() && !p.done) {
+          statusEl.className = "fetch-status error";
+        }
+        if (!p.done) {
+          statusEl.textContent = p.completed + "/" + p.total +
+            "（訳: " + p.succeeded + " / 失敗: " + p.failed + "）";
+          return;
+        }
+        // done
+        if (p.reason === "deepl_key_missing") {
+          finish("DEEPL_KEY が渡されていません。vault exec 経由で起動してください", "error");
+        } else if (p.reason === "usage_limit") {
+          finish("無料枠(50万字)に達したため停止しました", "error");
+        } else if (p.stopped) {
+          finish("停止しました（訳: " + p.succeeded + " / 失敗: " + p.failed + "）", "success");
+        } else {
+          finish("完了：訳 " + p.succeeded + " 曲 / 失敗 " + p.failed + " 曲", "success");
+        }
+      },
+      function () { return self._translateStopFlag; }
+    );
   }
 };

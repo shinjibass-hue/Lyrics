@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
@@ -26,6 +26,9 @@
         <button id="btn-sort-mode" class="btn-secondary">Sort: Manual</button>
         <button id="btn-fetch-all" class="btn-secondary">Fetch All Lyrics</button>
         <span id="fetch-all-status" class="fetch-status"></span>
+        <button id="btn-translate-all" class="btn-secondary">未訳をまとめて翻訳</button>
+        <span id="translate-all-status" class="fetch-status"></span>
+        <span id="translate-usage" class="fetch-status" title="DeepL 無料枠の今月の使用量"></span>
         <button id="btn-export" class="btn-secondary">Export</button>
         <button id="btn-import" class="btn-secondary">Import</button>
         <input type="file" id="import-file-input" accept=".json" hidden>
@@ -93,6 +96,15 @@ Blue Ridge Mountains, Shenandoah River
 
 Country roads, take me home
 To the place I belong"></textarea>
+        </div>
+        <div class="form-group">
+          <div class="label-row">
+            <label for="input-lyrics-ja">日本語訳</label>
+            <button type="button" id="btn-translate-ja" class="btn-secondary btn-small">DeepL で訳し直す</button>
+            <span id="translate-ja-status" class="fetch-status"></span>
+          </div>
+          <textarea id="input-lyrics-ja" rows="15" placeholder="日本語訳（英語の各行の位置に合わせて入ります）。
+ここを手で直して保存すると、DeepL で自動上書きされなくなります。"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save</button>
@@ -273,16 +285,16 @@ To the place I belong"></textarea>
   </div>
 
   <script src="js/presets.js?v=1"></script>
-  <script src="js/store.js?v=10"></script>
-  <script src="js/lyricsFetcher.js?v=5"></script>
-  <script src="js/bpmEngine.js?v=5"></script>
-  <script src="js/songList.js?v=7"></script>
-  <script src="js/songEditor.js?v=5"></script>
+  <script src="js/store.js?v=11"></script>
+  <script src="js/lyricsFetcher.js?v=6"></script>
+  <script src="js/bpmEngine.js?v=6"></script>
+  <script src="js/songList.js?v=8"></script>
+  <script src="js/songEditor.js?v=6"></script>
   <script src="js/playlistView.js?v=5"></script>
-  <script src="js/performer.js?v=5"></script>
+  <script src="js/performer.js?v=6"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="js/gistSync.js?v=10"></script>
+  <script src="js/gistSync.js?v=11"></script>
   <script src="js/app.js?v=5"></script>
 </body>
 </html>

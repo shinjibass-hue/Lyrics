@@ -8,7 +8,17 @@ LyricsApp.Store = {
   _read: function () {
     try {
       var data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      var songs = data ? JSON.parse(data) : [];
+      // Migration: ensure translation fields exist on legacy data.
+      for (var i = 0; i < songs.length; i++) {
+        if (songs[i].lyricsJa === undefined || songs[i].lyricsJa === null) {
+          songs[i].lyricsJa = "";
+        }
+        if (songs[i].lyricsJaSource === undefined || songs[i].lyricsJaSource === null) {
+          songs[i].lyricsJaSource = "";
+        }
+      }
+      return songs;
     } catch (e) {
       return [];
     }
@@ -105,6 +115,8 @@ LyricsApp.Store = {
       beatsPerLine: Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8)),
       linesPerSlide: Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1)),
       lyrics: data.lyrics || "",
+      lyricsJa: data.lyricsJa || "",
+      lyricsJaSource: data.lyricsJaSource || "",
       order: maxOrder,
       createdAt: now,
       updatedAt: now
@@ -124,6 +136,10 @@ LyricsApp.Store = {
         songs[i].beatsPerLine = Math.max(1, Math.min(64, parseInt(data.beatsPerLine, 10) || 8));
         songs[i].linesPerSlide = Math.max(1, Math.min(10, parseInt(data.linesPerSlide, 10) || 1));
         songs[i].lyrics = data.lyrics || "";
+        // Only touch translation fields when the caller provides them, so
+        // lyrics-only updates (e.g. from the fetcher) never clobber a translation.
+        if (data.lyricsJa !== undefined) songs[i].lyricsJa = data.lyricsJa;
+        if (data.lyricsJaSource !== undefined) songs[i].lyricsJaSource = data.lyricsJaSource;
         songs[i].updatedAt = Date.now();
         this._write(songs);
         return songs[i];
@@ -429,6 +445,38 @@ LyricsApp.Store = {
       }
       slides.push({ lines: combined, lineCount: lineCount });
     }
+    return slides;
+  },
+
+  // Parse lyrics + Japanese translation into bilingual slides.
+  // Pairs each English line with the Japanese line at the same index
+  // (the translation keeps blank lines and [Section] headers in place, so
+  // line indices stay aligned). Blank lines act as slide boundaries and
+  // content lines are grouped n-per-slide, matching line mode's rhythm.
+  parseLyricsBilingual: function (rawText, rawJa, n) {
+    if (!n || n < 1) n = 1;
+    if (!rawText || !rawText.trim()) return [];
+    var enLines = rawText.split(/\n/);
+    var jaLines = (rawJa || "").split(/\n/);
+    var slides = [];
+    var current = [];
+    function flush() {
+      if (current.length > 0) {
+        slides.push({ pairs: current, lineCount: current.length });
+        current = [];
+      }
+    }
+    for (var i = 0; i < enLines.length; i++) {
+      var en = enLines[i].trim();
+      if (en === "") { flush(); continue; } // blank line = section boundary
+      var ja = (i < jaLines.length && jaLines[i]) ? jaLines[i].trim() : "";
+      // Don't repeat a line that wasn't translated (e.g. [Section] headers,
+      // which the translator passes through unchanged).
+      if (ja === en) ja = "";
+      current.push({ en: en, ja: ja });
+      if (current.length >= n) flush();
+    }
+    flush();
     return slides;
   }
 };

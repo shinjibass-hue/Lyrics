@@ -3,9 +3,10 @@ window.LyricsApp = window.LyricsApp || {};
 LyricsApp.PerformerView = {
   _song: null,
   _slides: [],
-  _displayMode: "line", // "line", "section", "two-sections", "full"
-  _modes: ["line", "section", "two-sections", "full"],
-  _modeLabels: { "line": "Line", "section": "1 Section", "two-sections": "2 Sections", "full": "Full" },
+  _displayMode: "line", // "line", "section", "two-sections", "full", "bilingual"
+  // "bilingual" is a practice/reading mode and is kept last on purpose.
+  _modes: ["line", "section", "two-sections", "full", "bilingual"],
+  _modeLabels: { "line": "Line", "section": "1 Section", "two-sections": "2 Sections", "full": "Full", "bilingual": "対訳" },
   _controlsTimeout: null,
   _touchStartX: 0,
   _touchStartY: 0,
@@ -132,6 +133,10 @@ LyricsApp.PerformerView = {
       // Full mode: single slide, displayed as left/right split
       this._sectionSlides = LyricsApp.Store.parseLyricsSections(rawLyrics);
       this._slides = [{ full: true }];
+    } else if (mode === "bilingual") {
+      // Bilingual: English line with its Japanese translation below.
+      this._slides = LyricsApp.Store.parseLyricsBilingual(
+        rawLyrics, this._song.lyricsJa, this._linesPerSlide);
     }
 
     if (this._slides.length === 0) {
@@ -246,7 +251,7 @@ LyricsApp.PerformerView = {
     var lyricsDisplay = document.getElementById("lyrics-display");
 
     // Remove all mode classes
-    lyricsDisplay.classList.remove("mode-line", "mode-section", "mode-two-sections", "mode-full");
+    lyricsDisplay.classList.remove("mode-line", "mode-section", "mode-two-sections", "mode-full", "mode-bilingual");
     lyricsDisplay.classList.add("mode-" + this._displayMode);
 
     // Reset any inline styles from previous render
@@ -293,6 +298,8 @@ LyricsApp.PerformerView = {
       this._renderSectionMode(index, currentEl, nextEl, counterEl);
     } else if (this._displayMode === "full") {
       this._renderFullMode(index, currentEl, nextEl, counterEl);
+    } else if (this._displayMode === "bilingual") {
+      this._renderBilingualMode(index, currentEl, nextEl, counterEl);
     }
 
     this._updatePlayButton();
@@ -456,6 +463,53 @@ LyricsApp.PerformerView = {
     // Fit each half to screen
     this._fitToScreenByMeasure(currentEl, 80);
     this._fitToScreenByMeasure(nextEl, 80);
+  },
+
+  _renderBilingualMode: function (index, currentEl, nextEl, counterEl) {
+    var slide = this._slides[index];
+    currentEl.innerHTML = "";
+    currentEl.style.fontSize = "";
+    currentEl.classList.remove("long-text", "fade-in");
+    void currentEl.offsetWidth;
+    currentEl.classList.add("fade-in");
+
+    var pairs = (slide && slide.pairs) ? slide.pairs : [];
+    for (var i = 0; i < pairs.length; i++) {
+      var row = document.createElement("div");
+      row.className = "bilingual-row";
+
+      var enDiv = document.createElement("div");
+      enDiv.className = "bilingual-en";
+      enDiv.textContent = pairs[i].en;
+      row.appendChild(enDiv);
+
+      // Only add the Japanese line when a translation exists — songs without
+      // a translation show English only, without breaking the layout.
+      if (pairs[i].ja) {
+        var jaDiv = document.createElement("div");
+        jaDiv.className = "bilingual-ja";
+        jaDiv.textContent = pairs[i].ja;
+        row.appendChild(jaDiv);
+      }
+      currentEl.appendChild(row);
+    }
+
+    // Next-slide preview: first English line of the next slide.
+    var nextSlide = this._slides[index + 1];
+    if (nextSlide && nextSlide.pairs && nextSlide.pairs[0]) {
+      nextEl.textContent = nextSlide.pairs[0].en;
+    } else {
+      nextEl.textContent = "";
+    }
+
+    // Shrink when a slide holds several lines so both languages fit.
+    var lineTotal = 0;
+    for (var j = 0; j < pairs.length; j++) {
+      lineTotal += pairs[j].ja ? 2 : 1;
+    }
+    currentEl.classList.toggle("long-text", lineTotal > 4);
+
+    counterEl.textContent = (index + 1) + " / " + this._slides.length;
   },
 
   // Fit font-size by line count (for two-sections mode)

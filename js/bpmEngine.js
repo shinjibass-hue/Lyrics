@@ -55,6 +55,14 @@ LyricsApp.BpmEngine = {
       return baseMsPerLine;
     }
 
+    if (this._mode === "bilingual") {
+      var bSlide = this._slides[this._currentIndex];
+      if (bSlide && bSlide.lineCount) {
+        return baseMsPerLine * bSlide.lineCount;
+      }
+      return baseMsPerLine;
+    }
+
     // "full" mode - no auto advance
     return 0;
   },

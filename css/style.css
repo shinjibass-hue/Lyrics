@@ -656,6 +656,27 @@ textarea {
   text-align: center;
 }
 
+/* Bilingual mode: English line with its Japanese translation underneath.
+   Japanese is smaller and dimmer so the original is obvious at a glance. */
+.mode-bilingual .lyrics-current {
+  font-weight: bold;
+  line-height: 1.3;
+}
+.bilingual-row {
+  margin-bottom: 0.7em;
+}
+.bilingual-en {
+  color: #ffffff;
+}
+.bilingual-ja {
+  font-family: var(--font-ui);
+  font-size: 0.6em;
+  color: #9aa;
+  font-weight: normal;
+  margin-top: 0.15em;
+  line-height: 1.3;
+}
+
 /* ===== 10. Responsive ===== */
 @media (max-width: 600px) {
   .header { padding: 0.8rem 1rem; }

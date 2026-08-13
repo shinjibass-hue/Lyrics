@@ -1,7 +1,63 @@
 window.LyricsApp = window.LyricsApp || {};
 
+// Tracks how many characters were sent to DeepL each month, so the free
+// tier (500,000 chars/month) is never exceeded.
+LyricsApp.TranslateUsage = {
+  KEY: "country_lyrics_deepl_usage",
+  LIMIT: 500000,
+  WARN: 450000,
+
+  _month: function () {
+    var d = new Date();
+    var m = d.getMonth() + 1;
+    return d.getFullYear() + "-" + (m < 10 ? "0" + m : m);
+  },
+
+  _read: function () {
+    try { return JSON.parse(localStorage.getItem(this.KEY)) || {}; }
+    catch (e) { return {}; }
+  },
+
+  get: function () {
+    return this._read()[this._month()] || 0;
+  },
+
+  add: function (chars) {
+    if (!chars || chars <= 0) return this.get();
+    var data = this._read();
+    var mk = this._month();
+    data[mk] = (data[mk] || 0) + chars;
+    try { localStorage.setItem(this.KEY, JSON.stringify(data)); } catch (e) {}
+    return data[mk];
+  },
+
+  // true if `estimate` more chars would push us over the monthly limit
+  wouldExceed: function (estimate) {
+    return (this.get() + (estimate || 0)) > this.LIMIT;
+  },
+
+  isWarn: function () {
+    return this.get() >= this.WARN;
+  },
+
+  // Rough estimate of billable chars for a set of lyrics (mirrors the
+  // server's rule: skip blank lines and [Section] headers).
+  estimateChars: function (rawLyrics) {
+    if (!rawLyrics) return 0;
+    var lines = rawLyrics.split(/\n/);
+    var total = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var s = lines[i].trim();
+      if (s === "" || /^\[.*\]$/.test(s)) continue;
+      total += s.length;
+    }
+    return total;
+  }
+};
+
 LyricsApp.LyricsFetcher = {
   API_BASE: "https://lrclib.net/api/search",
+  TRANSLATE_ENDPOINT: "/api/translate",
 
   // Returns just lyrics text
   fetch: function (title, artist) {
@@ -184,8 +240,11 @@ LyricsApp.LyricsFetcher = {
       });
   },
 
-  // Fetch lyrics for a single song and save it (also fills artist if empty)
+  // Fetch lyrics for a single song and save it (also fills artist if empty).
+  // After saving lyrics, auto-translate to Japanese if the song has no
+  // translation yet. A manual translation is never overwritten.
   fetchAndSave: function (songId) {
+    var self = this;
     var song = LyricsApp.Store.getById(songId);
     if (!song) return Promise.reject(new Error("Song not found"));
 
@@ -199,8 +258,141 @@ LyricsApp.LyricsFetcher = {
           linesPerSlide: song.linesPerSlide || 1,
           lyrics: info.lyrics
         });
-        return info.lyrics;
+        // Auto-translate; failure here must not fail the lyrics fetch.
+        return self.translateSong(songId)
+          .catch(function () {})
+          .then(function () { return info.lyrics; });
       });
+  },
+
+  // Call the local translate endpoint. Resolves with { lines, chars } or
+  // rejects with an Error whose .code is set for known conditions.
+  _requestTranslation: function (lines) {
+    return window.fetch(this.TRANSLATE_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lines: lines })
+    }).then(function (res) {
+      return res.json().catch(function () { return null; });
+    }).then(function (data) {
+      if (data && data.error) {
+        var err = new Error(data.error);
+        err.code = data.error;
+        throw err;
+      }
+      if (!data || !data.lines) {
+        throw new Error("bad_response");
+      }
+      return data;
+    });
+  },
+
+  // Translate one song's lyrics to Japanese and save the result.
+  // opts.force = true allows overwriting a manual translation (user-initiated).
+  // Resolves with the Japanese text on success, or null when skipped.
+  translateSong: function (songId, opts) {
+    opts = opts || {};
+    var song = LyricsApp.Store.getById(songId);
+    if (!song || !song.lyrics || !song.lyrics.trim()) return Promise.resolve(null);
+
+    // Never overwrite a hand-edited translation unless explicitly forced.
+    if (!opts.force && song.lyricsJaSource === "manual") return Promise.resolve(null);
+    // Skip if already translated (auto path only).
+    if (!opts.force && song.lyricsJa && song.lyricsJa.trim()) return Promise.resolve(null);
+
+    var estimate = LyricsApp.TranslateUsage.estimateChars(song.lyrics);
+    if (estimate <= 0) return Promise.resolve(null);
+    if (LyricsApp.TranslateUsage.wouldExceed(estimate)) {
+      var limitErr = new Error("usage_limit");
+      limitErr.code = "usage_limit";
+      return Promise.reject(limitErr);
+    }
+
+    var lines = song.lyrics.split(/\n/);
+    return this._requestTranslation(lines).then(function (data) {
+      // Line correspondence is mandatory — bail without saving on mismatch.
+      if (!data.lines || data.lines.length !== lines.length) {
+        var mErr = new Error("length_mismatch");
+        mErr.code = "length_mismatch";
+        throw mErr;
+      }
+      LyricsApp.TranslateUsage.add(data.chars || 0);
+      var ja = data.lines.join("\n");
+      LyricsApp.Store.update(songId, { lyricsJa: ja, lyricsJaSource: "deepl" });
+      return ja;
+    });
+  },
+
+  // Bulk-translate every song that has lyrics but no translation yet.
+  // onProgress receives { completed, total, succeeded, failed, chars, done, stopped, reason }.
+  // shouldStop() is polled between songs to allow cancellation.
+  translateAll: function (onProgress, shouldStop) {
+    var self = this;
+    var songs = LyricsApp.Store.getAll();
+    var pending = songs.filter(function (s) {
+      var hasLyrics = s.lyrics && s.lyrics.trim();
+      var hasJa = s.lyricsJa && s.lyricsJa.trim();
+      return hasLyrics && !hasJa && s.lyricsJaSource !== "manual";
+    });
+    var total = pending.length;
+    var completed = 0, succeeded = 0, failed = 0;
+
+    function report(extra) {
+      if (!onProgress) return;
+      var base = {
+        completed: completed, total: total,
+        succeeded: succeeded, failed: failed,
+        chars: LyricsApp.TranslateUsage.get()
+      };
+      for (var k in extra) base[k] = extra[k];
+      onProgress(base);
+    }
+
+    if (total === 0) {
+      report({ done: true, stopped: false });
+      return Promise.resolve();
+    }
+
+    function processNext(index) {
+      if (index >= pending.length) {
+        report({ done: true, stopped: false });
+        return Promise.resolve();
+      }
+      if (shouldStop && shouldStop()) {
+        report({ done: true, stopped: true });
+        return Promise.resolve();
+      }
+      // Stop before exceeding the monthly limit.
+      if (LyricsApp.TranslateUsage.get() >= LyricsApp.TranslateUsage.LIMIT) {
+        report({ done: true, stopped: true, reason: "usage_limit" });
+        return Promise.resolve();
+      }
+
+      var song = pending[index];
+      return self.translateSong(song.id)
+        .then(function (ja) {
+          if (ja) succeeded++; else failed++;
+        })
+        .catch(function (err) {
+          failed++;
+          if (err && (err.code === "deepl_key_missing" || err.code === "usage_limit")) {
+            // Fatal for the whole run — surface and stop.
+            completed++;
+            report({ done: true, stopped: true, reason: err.code });
+            throw err; // short-circuit the chain
+          }
+        })
+        .then(function () {
+          completed++;
+          report({ done: false, stopped: false });
+          return new Promise(function (resolve) { setTimeout(resolve, 300); });
+        })
+        .then(function () {
+          return processNext(index + 1);
+        });
+    }
+
+    return processNext(0).catch(function () { /* already reported */ });
   },
 
   // Bulk fetch for all songs missing lyrics

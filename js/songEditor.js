@@ -32,6 +32,10 @@ LyricsApp.SongEditorView = {
     document.getElementById("btn-close-lyrics-results").addEventListener("click", function () {
       document.getElementById("lyrics-results-modal").classList.add("hidden");
     });
+
+    document.getElementById("btn-translate-ja").addEventListener("click", function () {
+      self._handleTranslateJa();
+    });
   },
 
   show: function (songId) {
@@ -45,6 +49,8 @@ LyricsApp.SongEditorView = {
     var inputBeats = document.getElementById("input-beats-per-line");
     var inputLinesPerSlide = document.getElementById("input-lines-per-slide");
     var inputLyrics = document.getElementById("input-lyrics");
+    var inputLyricsJa = document.getElementById("input-lyrics-ja");
+    document.getElementById("translate-ja-status").textContent = "";
 
     if (this._currentSongId) {
       var song = LyricsApp.Store.getById(this._currentSongId);
@@ -56,6 +62,7 @@ LyricsApp.SongEditorView = {
         inputBeats.value = song.beatsPerLine;
         inputLinesPerSlide.value = song.linesPerSlide || 1;
         inputLyrics.value = song.lyrics;
+        inputLyricsJa.value = song.lyricsJa || "";
         document.getElementById("btn-clear-lyrics").hidden = !song.lyrics;
         deleteBtn.hidden = false;
       }
@@ -67,6 +74,7 @@ LyricsApp.SongEditorView = {
       inputBeats.value = "8";
       inputLinesPerSlide.value = "1";
       inputLyrics.value = "";
+      inputLyricsJa.value = "";
       document.getElementById("btn-clear-lyrics").hidden = true;
       document.getElementById("fetch-lyrics-status").textContent = "";
       deleteBtn.hidden = true;
@@ -74,24 +82,88 @@ LyricsApp.SongEditorView = {
   },
 
   _handleSave: function () {
+    var lyricsJa = document.getElementById("input-lyrics-ja").value;
     var data = {
       title: document.getElementById("input-title").value,
       artist: document.getElementById("input-artist").value,
       bpm: document.getElementById("input-bpm").value,
       beatsPerLine: document.getElementById("input-beats-per-line").value,
       linesPerSlide: document.getElementById("input-lines-per-slide").value,
-      lyrics: document.getElementById("input-lyrics").value
+      lyrics: document.getElementById("input-lyrics").value,
+      lyricsJa: lyricsJa
     };
 
     if (!data.title.trim()) return;
 
     if (this._currentSongId) {
+      var existing = LyricsApp.Store.getById(this._currentSongId);
+      // If the translation text was hand-edited, mark it manual so DeepL
+      // never overwrites it. Otherwise keep the existing source.
+      if (existing && lyricsJa !== (existing.lyricsJa || "")) {
+        data.lyricsJaSource = "manual";
+      } else if (existing) {
+        data.lyricsJaSource = existing.lyricsJaSource || "";
+      }
       LyricsApp.Store.update(this._currentSongId, data);
     } else {
+      // New song: any translation typed in is a manual one.
+      data.lyricsJaSource = lyricsJa.trim() ? "manual" : "";
       LyricsApp.Store.create(data);
     }
 
     LyricsApp.App.navigate("song-list");
+  },
+
+  // "DeepL で訳し直す" — allowed to overwrite a manual translation because
+  // the user pressed it themselves.
+  _handleTranslateJa: function () {
+    var statusEl = document.getElementById("translate-ja-status");
+    var btn = document.getElementById("btn-translate-ja");
+    var inputLyrics = document.getElementById("input-lyrics");
+    var inputLyricsJa = document.getElementById("input-lyrics-ja");
+
+    if (!inputLyrics.value.trim()) {
+      statusEl.textContent = "先に歌詞を入れてください";
+      statusEl.className = "fetch-status error";
+      return;
+    }
+
+    // Translate what is currently in the lyrics box (may be unsaved).
+    var lines = inputLyrics.value.split(/\n/);
+    var estimate = LyricsApp.TranslateUsage.estimateChars(inputLyrics.value);
+    if (LyricsApp.TranslateUsage.wouldExceed(estimate)) {
+      statusEl.textContent = "今月の DeepL 無料枠に達しています";
+      statusEl.className = "fetch-status error";
+      return;
+    }
+
+    btn.disabled = true;
+    statusEl.textContent = "翻訳中...";
+    statusEl.className = "fetch-status loading";
+
+    LyricsApp.LyricsFetcher._requestTranslation(lines)
+      .then(function (data) {
+        if (!data.lines || data.lines.length !== lines.length) {
+          throw new Error("length_mismatch");
+        }
+        LyricsApp.TranslateUsage.add(data.chars || 0);
+        inputLyricsJa.value = data.lines.join("\n");
+        statusEl.textContent = "翻訳しました（保存で確定します）";
+        statusEl.className = "fetch-status success";
+      })
+      .catch(function (err) {
+        if (err && err.code === "deepl_key_missing") {
+          statusEl.textContent = "DEEPL_KEY が渡されていません。vault exec 経由で起動してください";
+        } else if (err && err.message === "length_mismatch") {
+          statusEl.textContent = "行数が一致しないため中止しました";
+        } else {
+          statusEl.textContent = "翻訳に失敗しました";
+        }
+        statusEl.className = "fetch-status error";
+      })
+      .then(function () {
+        btn.disabled = false;
+      });
   },
 
   _handleDelete: function () {

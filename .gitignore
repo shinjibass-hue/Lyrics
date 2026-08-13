@@ -5,3 +5,6 @@ nohup.out
 # local env files
 .env
 .env*.local
+
+# DeepL の認証キーが入ります。git に入れないでください
+config.json
