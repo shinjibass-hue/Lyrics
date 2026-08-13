@@ -593,9 +593,15 @@ LyricsApp.SongListView = {
       return;
     }
 
-    var pending = LyricsApp.LyricsFetcher.pendingForTranslation();
+    // 対象アーティストだけに絞るか（既定オン）。対象外の曲に無料枠を使わないため。
+    var targetsChk = document.getElementById("chk-targets-only");
+    var targetsOnly = targetsChk ? targetsChk.checked : true;
+
+    var pending = LyricsApp.LyricsFetcher.pendingForTranslation(targetsOnly);
     if (pending.length === 0) {
-      statusEl.textContent = "未訳の曲はありません";
+      statusEl.textContent = targetsOnly
+        ? "未訳の曲はありません（対象アーティストの中に）"
+        : "未訳の曲はありません";
       statusEl.className = "fetch-status success";
       return;
     }
@@ -619,6 +625,7 @@ LyricsApp.SongListView = {
           return;
         }
         var msg =
+          (targetsOnly ? "対象アーティストのみ\n" : "全アーティスト\n") +
           "対象 " + pending.length + " 曲 ／ 送信する文字数 約 " + chars.toLocaleString() + " 文字\n" +
           "今月の使用量 " + u.count.toLocaleString() + " / " + u.limit.toLocaleString() +
           " 文字（残り " + remaining.toLocaleString() + " 文字）\n\n翻訳を実行しますか？";
@@ -627,7 +634,7 @@ LyricsApp.SongListView = {
           statusEl.className = "fetch-status";
           return;
         }
-        self._startTranslateRun();
+        self._startTranslateRun(targetsOnly);
       })
       .catch(function (err) {
         statusEl.textContent = LyricsApp.LyricsFetcher.translateErrorMessage(err);
@@ -635,7 +642,7 @@ LyricsApp.SongListView = {
       });
   },
 
-  _startTranslateRun: function () {
+  _startTranslateRun: function (targetsOnly) {
     var btn = document.getElementById("btn-translate-all");
     var statusEl = document.getElementById("translate-all-status");
     var self = this;
@@ -676,7 +683,8 @@ LyricsApp.SongListView = {
           finish("完了：訳 " + p.succeeded + " 曲 / 失敗 " + p.failed + " 曲", "success");
         }
       },
-      function () { return self._translateStopFlag; }
+      function () { return self._translateStopFlag; },
+      targetsOnly
     );
   },
 

@@ -297,12 +297,41 @@ LyricsApp.LyricsFetcher = {
     return false;
   },
 
+  // 訳す対象のアーティスト（2026-08-14 信二さんの指定）。
+  // 小文字の部分一致で見ます。共演名義（"Waylon & Willie" など）も拾えます。
+  // 対象外の曲に無料枠を使わないための絞り込みです。増やすときはここに足してください。
+  TARGET_ARTISTS: [
+    "willie nelson",
+    "waylon",
+    "merle haggard",
+    "johnny cash",
+    "kris kristofferson",
+    "alan jackson",
+    "george strait",
+    "paycheck",
+    "jerry jeff",
+    "jimmy buffett"
+  ],
+
+  isTargetArtist: function (artist) {
+    var a = (artist || "").toLowerCase();
+    if (!a) return false;
+    for (var i = 0; i < this.TARGET_ARTISTS.length; i++) {
+      if (a.indexOf(this.TARGET_ARTISTS[i]) !== -1) return true;
+    }
+    return false;
+  },
+
   // Songs that have lyrics but no translation yet (the bulk-translate set).
-  pendingForTranslation: function () {
+  // targetsOnly = true なら TARGET_ARTISTS の曲だけに絞ります。
+  pendingForTranslation: function (targetsOnly) {
+    var self = this;
     return LyricsApp.Store.getAll().filter(function (s) {
       var hasLyrics = s.lyrics && s.lyrics.trim();
       var hasJa = s.lyricsJa && s.lyricsJa.trim();
-      return hasLyrics && !hasJa && s.lyricsJaSource !== "manual";
+      if (!hasLyrics || hasJa || s.lyricsJaSource === "manual") return false;
+      if (targetsOnly && !self.isTargetArtist(s.artist)) return false;
+      return true;
     });
   },
 
@@ -394,9 +423,9 @@ LyricsApp.LyricsFetcher = {
   // Bulk-translate every song that has lyrics but no translation yet.
   // onProgress receives { completed, total, succeeded, failed, chars, done, stopped, reason }.
   // shouldStop() is polled between songs to allow cancellation.
-  translateAll: function (onProgress, shouldStop) {
+  translateAll: function (onProgress, shouldStop, targetsOnly) {
     var self = this;
-    var pending = this.pendingForTranslation();
+    var pending = this.pendingForTranslation(targetsOnly);
     var total = pending.length;
     var completed = 0, succeeded = 0, failed = 0;
 

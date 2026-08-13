@@ -697,5 +697,18 @@ LyricsApp.Presets = [
   { title: "Blanket on the Ground", artist: "Billie Jo Spears", bpm: 108, beatsPerLine: 8 },
   { title: "Harper Valley PTA", artist: "Jeannie C. Riley", bpm: 132, beatsPerLine: 8 },
   { title: "Jackson", artist: "Johnny Cash & June Carter", bpm: 120, beatsPerLine: 8 },
-  { title: "Ode to Billie Joe", artist: "Bobbie Gentry", bpm: 96, beatsPerLine: 8 }
+  { title: "Ode to Billie Joe", artist: "Bobbie Gentry", bpm: 96, beatsPerLine: 8 },
+
+  // === Jimmy Buffett（2026-08-14 追加）===
+  // BPM は目安です。実際に合わせて曲ごとに直してください。
+  { title: "Margaritaville", artist: "Jimmy Buffett", bpm: 78, beatsPerLine: 8 },
+  { title: "Come Monday", artist: "Jimmy Buffett", bpm: 100, beatsPerLine: 8 },
+  { title: "A Pirate Looks at Forty", artist: "Jimmy Buffett", bpm: 72, beatsPerLine: 8 },
+  { title: "Cheeseburger in Paradise", artist: "Jimmy Buffett", bpm: 132, beatsPerLine: 8 },
+  { title: "Fins", artist: "Jimmy Buffett", bpm: 140, beatsPerLine: 8 },
+  { title: "Volcano", artist: "Jimmy Buffett", bpm: 112, beatsPerLine: 8 },
+  { title: "Changes in Latitudes, Changes in Attitudes", artist: "Jimmy Buffett", bpm: 120, beatsPerLine: 8 },
+  { title: "Son of a Son of a Sailor", artist: "Jimmy Buffett", bpm: 96, beatsPerLine: 8 },
+  { title: "Why Don't We Get Drunk", artist: "Jimmy Buffett", bpm: 92, beatsPerLine: 8 },
+  { title: "Boat Drinks", artist: "Jimmy Buffett", bpm: 120, beatsPerLine: 8 }
 ];
