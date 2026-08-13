@@ -25,10 +25,26 @@ LyricsApp.App = {
       LyricsApp.App.navigate("playlists");
     });
 
+    // ファイル保存（~/SynologyDrive）。Export を押さなくて済むようにするため。
+    this._initFileStore();
+
     // Auto-sync: set up status indicator and start
     this._initAutoSync();
 
     this.navigate("song-list");
+  },
+
+  _initFileStore: function () {
+    if (!LyricsApp.FileStore) return;
+    var el = document.getElementById("file-store-status");
+    LyricsApp.FileStore.onStatus(function (text, kind) {
+      if (!el) return;
+      el.textContent = text;
+      el.className = "fetch-status" + (kind ? " " + kind : "");
+    });
+    LyricsApp.FileStore.initOnBoot();
+    var btn = document.getElementById("btn-file-save");
+    if (btn) btn.addEventListener("click", function () { LyricsApp.FileStore.save(); });
   },
 
   _initAutoSync: function () {

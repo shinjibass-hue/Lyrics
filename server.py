@@ -184,6 +184,50 @@ def _ollama_batch(texts, title="", artist=""):
     return out
 
 
+def data_path():
+    """曲データの保存先。SynologyDrive に置くので NAS へ自動で同期されます。
+
+    ここに置けば Export を押す必要がなくなります（2026-08-14）。
+    環境変数 LYRICS_DATA で場所を変えられます。
+    """
+    p = os.environ.get("LYRICS_DATA", "")
+    if p:
+        return os.path.expanduser(p)
+    return os.path.expanduser("~/SynologyDrive/data/country-lyrics.json")
+
+
+def read_data():
+    """保存されている曲データを返します。無ければ None。"""
+    path = data_path()
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def write_data(obj):
+    """一時ファイルに書いてから置き換えます。途中で失敗しても元は無傷です。
+
+    書く前に1世代だけ控えを残します（.bak）。消えて困るデータなので、
+    上書きで消える経路を作らないためです。
+    """
+    path = data_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                old = f.read()
+            with open(path + ".bak", "w", encoding="utf-8") as f:
+                f.write(old)
+        except Exception as e:
+            print("backup failed: %s" % e, flush=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, path)
+    return path
+
+
 def _google_batches(texts):
     """件数と文字数の両方で区切ったバッチを順に返します。"""
     batch, chars = [], 0
@@ -284,6 +328,24 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
         if path == "/api/deepl-usage":
             self._handle_usage()
             return
+        if path == "/api/data":
+            # 保存してある曲データを返します。無ければ exists=false。
+            try:
+                data = read_data()
+            except Exception as e:
+                print("read_data failed: %s" % e, flush=True)
+                self._send_json(200, {"error": "read_failed", "detail": str(e)})
+                return
+            if data is None:
+                self._send_json(200, {"exists": False, "path": data_path()})
+            else:
+                self._send_json(200, {
+                    "exists": True, "path": data_path(),
+                    "songs": data.get("songs", []),
+                    "playlists": data.get("playlists", []),
+                    "savedAt": data.get("savedAt", "")
+                })
+            return
         # Everything else is a static file.
         super().do_GET()
 
@@ -334,7 +396,7 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
-        if path != "/api/translate":
+        if path not in ("/api/translate", "/api/data"):
             self.send_error(404, "Not Found")
             return
 
@@ -343,6 +405,30 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
         except (TypeError, ValueError):
             length = 0
         raw = self.rfile.read(length) if length > 0 else b""
+
+        if path == "/api/data":
+            # 曲データを保存します。空で上書きしないように必ず確かめます。
+            try:
+                obj = json.loads(raw.decode("utf-8"))
+            except Exception:
+                self._send_json(400, {"error": "bad_json"})
+                return
+            songs = obj.get("songs")
+            if not isinstance(songs, list) or len(songs) == 0:
+                # 0件で上書きするのは事故です。受け付けません。
+                self._send_json(200, {"error": "refused_empty"})
+                return
+            try:
+                obj["savedAt"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
+                p = write_data(obj)
+            except Exception as e:
+                print("write_data failed: %s" % e, flush=True)
+                self._send_json(200, {"error": "write_failed", "detail": str(e)})
+                return
+            self._send_json(200, {"ok": True, "path": p,
+                                  "songs": len(songs),
+                                  "playlists": len(obj.get("playlists") or [])})
+            return
 
         try:
             payload = json.loads(raw.decode("utf-8"))

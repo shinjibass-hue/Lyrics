@@ -35,6 +35,8 @@
         <label class="auto-translate-toggle" title="Willie / Waylon / Merle / Cash / Kris / Alan Jackson / George Strait / Paycheck / Jerry Jeff / Buffett だけを訳します（既定オン）">
           <input type="checkbox" id="chk-targets-only" checked> 対象アーティストのみ
         </label>
+        <button id="btn-file-save" class="btn-secondary" title="~/SynologyDrive/data/country-lyrics.json へ保存します">ファイルへ保存</button>
+        <span id="file-store-status" class="fetch-status"></span>
         <button id="btn-export" class="btn-secondary">Export</button>
         <button id="btn-import" class="btn-secondary">Import</button>
         <input type="file" id="import-file-input" accept=".json" hidden>
@@ -295,7 +297,8 @@ To the place I belong"></textarea>
   </div>
 
   <script src="js/presets.js?v=1"></script>
-  <script src="js/store.js?v=13"></script>
+  <script src="js/store.js?v=14"></script>
+  <script src="js/fileStore.js?v=1"></script>
   <script src="js/lyricsFetcher.js?v=11"></script>
   <script src="js/bpmEngine.js?v=6"></script>
   <script src="js/songList.js?v=11"></script>
@@ -305,6 +308,6 @@ To the place I belong"></textarea>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="js/gistSync.js?v=11"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

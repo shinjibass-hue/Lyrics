@@ -30,6 +30,10 @@ LyricsApp.Store = {
       if (!this._suppressSync && LyricsApp.CloudSync) {
         LyricsApp.CloudSync.scheduleSync();
       }
+      // 変更のたびに ~/SynologyDrive のファイルへ書きます（Export を押さなくて済むように）。
+      if (!this._suppressSync && LyricsApp.FileStore) {
+        LyricsApp.FileStore.schedule();
+      }
     } catch (e) {
       alert("Storage limit reached. Please delete some songs.");
     }
