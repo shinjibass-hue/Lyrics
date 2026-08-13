@@ -1,8 +1,24 @@
 window.LyricsApp = window.LyricsApp || {};
 
+// User-adjustable settings persisted in localStorage.
+LyricsApp.Settings = {
+  AUTO_TRANSLATE_KEY: "country_lyrics_auto_translate",
+
+  // Auto-translate right after fetching lyrics. OFF by default — translation
+  // only runs when the user explicitly turns this on. This is what stopped
+  // the silent flood of 1000 translation requests.
+  autoTranslateOnFetch: function () {
+    return localStorage.getItem(this.AUTO_TRANSLATE_KEY) === "1";
+  },
+  setAutoTranslateOnFetch: function (on) {
+    localStorage.setItem(this.AUTO_TRANSLATE_KEY, on ? "1" : "0");
+  }
+};
+
 // Tracks how many characters were sent to DeepL each month, so the free
 // tier (500,000 chars/month) is never exceeded.
 LyricsApp.TranslateUsage = {
+  USAGE_ENDPOINT: "/api/deepl-usage",
   KEY: "country_lyrics_deepl_usage",
   LIMIT: 500000,
   WARN: 450000,
@@ -52,6 +68,25 @@ LyricsApp.TranslateUsage = {
       total += s.length;
     }
     return total;
+  },
+
+  // Real usage straight from DeepL (via the local server). Resolves with
+  // { count, limit }; rejects with an Error whose .code is set on failure.
+  fetchReal: function () {
+    return window.fetch(this.USAGE_ENDPOINT)
+      .then(function (res) { return res.json().catch(function () { return null; }); })
+      .then(function (data) {
+        if (!data || data.error) {
+          var e = new Error((data && data.error) || "usage_unavailable");
+          e.code = (data && data.error) || "usage_unavailable";
+          if (data && data.status !== undefined) e.status = data.status;
+          throw e;
+        }
+        return {
+          count: data.character_count || 0,
+          limit: data.character_limit || 0
+        };
+      });
   }
 };
 
@@ -240,9 +275,40 @@ LyricsApp.LyricsFetcher = {
       });
   },
 
+  // Human-readable Japanese message for a translation/usage error. One place
+  // so every screen says the same thing (incl. the 456 quota case).
+  translateErrorMessage: function (err) {
+    var code = err && err.code;
+    var status = err && err.status;
+    if (code === "deepl_key_missing") return "DEEPL_KEY が渡されていません。vault exec 経由で起動してください";
+    if (code === "usage_limit") return "今月の DeepL 無料枠に達しています";
+    if (code === "deepl_http_error" && status === 456) return "DeepL の無料枠を使い切りました";
+    if (code === "deepl_http_error") return "DeepL でエラーが発生しました（HTTP " + status + "）";
+    if (code === "length_mismatch" || (err && err.message === "length_mismatch")) return "行数が合わず保存を中止しました";
+    if (code === "usage_unavailable") return "DeepL の使用量を取得できませんでした。サーバーを vault exec 経由で起動してください";
+    return "翻訳に失敗しました";
+  },
+
+  // A fatal DeepL condition means "stop the whole run", not "skip one song".
+  isFatalTranslateError: function (err) {
+    if (!err) return false;
+    if (err.code === "deepl_key_missing" || err.code === "usage_limit") return true;
+    if (err.code === "deepl_http_error") return true; // incl. 456 quota
+    return false;
+  },
+
+  // Songs that have lyrics but no translation yet (the bulk-translate set).
+  pendingForTranslation: function () {
+    return LyricsApp.Store.getAll().filter(function (s) {
+      var hasLyrics = s.lyrics && s.lyrics.trim();
+      var hasJa = s.lyricsJa && s.lyricsJa.trim();
+      return hasLyrics && !hasJa && s.lyricsJaSource !== "manual";
+    });
+  },
+
   // Fetch lyrics for a single song and save it (also fills artist if empty).
-  // After saving lyrics, auto-translate to Japanese if the song has no
-  // translation yet. A manual translation is never overwritten.
+  // Auto-translation runs ONLY when the user has explicitly enabled it
+  // (LyricsApp.Settings.autoTranslateOnFetch). Errors are never swallowed.
   fetchAndSave: function (songId) {
     var self = this;
     var song = LyricsApp.Store.getById(songId);
@@ -258,10 +324,11 @@ LyricsApp.LyricsFetcher = {
           linesPerSlide: song.linesPerSlide || 1,
           lyrics: info.lyrics
         });
-        // Auto-translate; failure here must not fail the lyrics fetch.
-        return self.translateSong(songId)
-          .catch(function () {})
-          .then(function () { return info.lyrics; });
+        if (!LyricsApp.Settings.autoTranslateOnFetch()) {
+          return info.lyrics;
+        }
+        // Opt-in only. Let a fatal error propagate so the caller can surface it.
+        return self.translateSong(songId).then(function () { return info.lyrics; });
       });
   },
 
@@ -278,6 +345,7 @@ LyricsApp.LyricsFetcher = {
       if (data && data.error) {
         var err = new Error(data.error);
         err.code = data.error;
+        if (data.status !== undefined) err.status = data.status;
         throw err;
       }
       if (!data || !data.lines) {
@@ -328,12 +396,7 @@ LyricsApp.LyricsFetcher = {
   // shouldStop() is polled between songs to allow cancellation.
   translateAll: function (onProgress, shouldStop) {
     var self = this;
-    var songs = LyricsApp.Store.getAll();
-    var pending = songs.filter(function (s) {
-      var hasLyrics = s.lyrics && s.lyrics.trim();
-      var hasJa = s.lyricsJa && s.lyricsJa.trim();
-      return hasLyrics && !hasJa && s.lyricsJaSource !== "manual";
-    });
+    var pending = this.pendingForTranslation();
     var total = pending.length;
     var completed = 0, succeeded = 0, failed = 0;
 
@@ -375,10 +438,10 @@ LyricsApp.LyricsFetcher = {
         })
         .catch(function (err) {
           failed++;
-          if (err && (err.code === "deepl_key_missing" || err.code === "usage_limit")) {
+          if (self.isFatalTranslateError(err)) {
             // Fatal for the whole run — surface and stop.
             completed++;
-            report({ done: true, stopped: true, reason: err.code });
+            report({ done: true, stopped: true, reason: err.code, status: err.status });
             throw err; // short-circuit the chain
           }
         })

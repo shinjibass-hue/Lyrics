@@ -98,8 +98,32 @@ LyricsApp.Store = {
     return null;
   },
 
+  // THE single place that decides when two songs are "the same song":
+  // title + artist, both trimmed and lower-cased. Title alone would merge
+  // different artists' covers, so both are always used. import / create /
+  // seedPresets / dedup all match through this function so the rule can
+  // never drift between call sites.
+  songKey: function (title, artist) {
+    return (title || "").trim().toLowerCase() + "|||" + (artist || "").trim().toLowerCase();
+  },
+
+  // Find a non-deleted song matching title+artist (via songKey), or null.
+  _findLiveByKey: function (songs, title, artist) {
+    var key = this.songKey(title, artist);
+    for (var i = 0; i < songs.length; i++) {
+      if (songs[i].deleted) continue;
+      if (this.songKey(songs[i].title, songs[i].artist) === key) return songs[i];
+    }
+    return null;
+  },
+
+  // Returns { duplicate:false, song } on create, or { duplicate:true, song }
+  // (the existing match) when a song with the same title+artist already
+  // exists — in that case nothing is added.
   create: function (data) {
     var songs = this._read();
+    var dup = this._findLiveByKey(songs, data.title, data.artist);
+    if (dup) return { duplicate: true, song: dup };
     var now = Date.now();
     var maxOrder = 0;
     for (var i = 0; i < songs.length; i++) {
@@ -123,7 +147,7 @@ LyricsApp.Store = {
     };
     songs.push(song);
     this._write(songs);
-    return song;
+    return { duplicate: false, song: song };
   },
 
   update: function (id, data) {
@@ -191,13 +215,14 @@ LyricsApp.Store = {
     // Deduplicate existing songs first
     this._deduplicateSongs(songs);
 
-    // Build lookup of existing IDs and titles
+    // Build lookup of existing IDs and title+artist keys (so covers with the
+    // same title but different artists are still seeded).
     var existingIds = {};
-    var existingTitles = {};
+    var existingKeys = {};
     for (var e = 0; e < songs.length; e++) {
       if (!songs[e].deleted) {
         existingIds[songs[e].id] = true;
-        existingTitles[songs[e].title.toLowerCase()] = true;
+        existingKeys[this.songKey(songs[e].title, songs[e].artist)] = true;
       }
     }
 
@@ -214,8 +239,8 @@ LyricsApp.Store = {
     var added = 0;
     for (var i = 0; i < presets.length; i++) {
       var presetId = "song_preset_" + i;
-      // Skip if this preset ID already exists or title already exists
-      if (existingIds[presetId] || existingTitles[presets[i].title.toLowerCase()]) continue;
+      // Skip if this preset ID already exists, or the same title+artist exists.
+      if (existingIds[presetId] || existingKeys[this.songKey(presets[i].title, presets[i].artist)]) continue;
       songs.push({
         id: presetId,
         title: presets[i].title,
@@ -237,7 +262,7 @@ LyricsApp.Store = {
     var groups = {};
     for (var i = 0; i < songs.length; i++) {
       if (songs[i].deleted) continue;
-      var key = songs[i].title.toLowerCase() + "|||" + (songs[i].artist || "").toLowerCase();
+      var key = this.songKey(songs[i].title, songs[i].artist);
       if (!groups[key]) groups[key] = [];
       groups[key].push(i);
     }
@@ -280,6 +305,26 @@ LyricsApp.Store = {
     }
   },
 
+  // Live-only counts for the song-list header (excludes soft-deleted).
+  counts: function () {
+    var live = this._read().filter(function (s) { return !s.deleted; });
+    var withLyrics = 0, withJa = 0;
+    for (var i = 0; i < live.length; i++) {
+      if (live[i].lyrics && live[i].lyrics.trim()) withLyrics++;
+      if (live[i].lyricsJa && live[i].lyricsJa.trim()) withJa++;
+    }
+    return { total: live.length, withLyrics: withLyrics, withJa: withJa };
+  },
+
+  // Backup filename with local date + time: country-lyrics-backup-YYYY-MM-DD-HHMM.json
+  _backupFilename: function () {
+    var d = new Date();
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return "country-lyrics-backup-" +
+      d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+      "-" + p(d.getHours()) + p(d.getMinutes()) + ".json";
+  },
+
   // Export all songs + playlists as JSON
   exportAll: function () {
     var data = {
@@ -293,11 +338,154 @@ LyricsApp.Store = {
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "country-lyrics-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.download = this._backupFilename();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  },
+
+  // Build a dedup plan WITHOUT changing anything. Key = title + artist,
+  // both trimmed and lower-cased (title alone would merge different artists'
+  // covers). Within a duplicate group the survivor is:
+  //   - the one with lyrics; if several have lyrics, the newest updatedAt
+  //   - if none have lyrics, the oldest createdAt
+  // Returns { groupCount, removeCount, before, after, loserIds, mapping }
+  // where mapping[loserId] = survivorId (for re-pointing playlists).
+  planDedup: function () {
+    var songs = this._read().filter(function (s) { return !s.deleted; });
+    var groups = {};
+    var order = [];
+    for (var i = 0; i < songs.length; i++) {
+      var s = songs[i];
+      var key = this.songKey(s.title, s.artist);
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(s);
+    }
+
+    var groupCount = 0;
+    var loserIds = [];
+    var mapping = {};
+
+    function hasLyrics(x) { return !!(x.lyrics && x.lyrics.trim()); }
+
+    for (var g = 0; g < order.length; g++) {
+      var group = groups[order[g]];
+      if (group.length <= 1) continue;
+      groupCount++;
+
+      var withLyrics = group.filter(hasLyrics);
+      var survivor;
+      if (withLyrics.length > 0) {
+        survivor = withLyrics[0];
+        for (var a = 1; a < withLyrics.length; a++) {
+          if ((withLyrics[a].updatedAt || 0) > (survivor.updatedAt || 0)) survivor = withLyrics[a];
+        }
+      } else {
+        survivor = group[0];
+        for (var b = 1; b < group.length; b++) {
+          if ((group[b].createdAt || 0) < (survivor.createdAt || 0)) survivor = group[b];
+        }
+      }
+
+      for (var c = 0; c < group.length; c++) {
+        if (group[c].id !== survivor.id) {
+          loserIds.push(group[c].id);
+          mapping[group[c].id] = survivor.id;
+        }
+      }
+    }
+
+    var before = songs.length;
+    return {
+      groupCount: groupCount,
+      removeCount: loserIds.length,
+      before: before,
+      after: before - loserIds.length,
+      loserIds: loserIds,
+      mapping: mapping
+    };
+  },
+
+  // Apply a plan from planDedup(): re-point playlist songIds from a removed
+  // song to its survivor (de-duplicating within each playlist), then
+  // soft-delete the losers so the deletion syncs to other devices.
+  executeDedup: function (plan) {
+    if (!plan || !plan.loserIds || plan.loserIds.length === 0) return;
+
+    // Re-point playlists first, so no playlist loses a song.
+    var playlists = LyricsApp.PlaylistStore._read();
+    var plChanged = false;
+    for (var p = 0; p < playlists.length; p++) {
+      var ids = playlists[p].songIds || [];
+      var newIds = [];
+      var seen = {};
+      var mapped = false;
+      for (var q = 0; q < ids.length; q++) {
+        var target = plan.mapping[ids[q]] || ids[q];
+        if (target !== ids[q]) mapped = true;
+        if (!seen[target]) { seen[target] = true; newIds.push(target); }
+      }
+      if (mapped || newIds.length !== ids.length) {
+        playlists[p].songIds = newIds;
+        playlists[p].updatedAt = Date.now();
+        plChanged = true;
+      }
+    }
+    if (plChanged) LyricsApp.PlaylistStore._write(playlists);
+
+    // Soft-delete the losers.
+    var loserSet = {};
+    for (var l = 0; l < plan.loserIds.length; l++) loserSet[plan.loserIds[l]] = true;
+    var all = this._read();
+    for (var i = 0; i < all.length; i++) {
+      if (loserSet[all[i].id] && !all[i].deleted) {
+        all[i].deleted = true;
+        all[i].updatedAt = Date.now();
+      }
+    }
+    this._write(all);
+  },
+
+  // Update `target` in place from imported record `r`. Never wipes non-empty
+  // lyrics or a translation with an empty one; keeps a manual translation.
+  // Returns true if anything actually changed.
+  _mergeImported: function (target, r) {
+    var before = JSON.stringify(target);
+
+    if (r.title !== undefined && ("" + r.title).trim()) target.title = ("" + r.title).trim();
+    if (r.artist !== undefined) target.artist = ("" + r.artist).trim();
+    if (r.bpm !== undefined) target.bpm = r.bpm;
+    if (r.beatsPerLine !== undefined) target.beatsPerLine = r.beatsPerLine;
+    if (r.linesPerSlide !== undefined) target.linesPerSlide = r.linesPerSlide;
+    if (typeof r.order === "number") target.order = r.order;
+
+    // lyrics: only overwrite when the imported side actually has lyrics.
+    if (r.lyrics && r.lyrics.trim()) target.lyrics = r.lyrics;
+
+    // translation: never overwrite a manual one; only fill/replace from a
+    // non-empty imported translation.
+    var rHasJa = !!(r.lyricsJa && r.lyricsJa.trim());
+    var tHasJa = !!(target.lyricsJa && target.lyricsJa.trim());
+    if (rHasJa && !(target.lyricsJaSource === "manual" && tHasJa)) {
+      target.lyricsJa = r.lyricsJa;
+      if (r.lyricsJaSource !== undefined) target.lyricsJaSource = r.lyricsJaSource;
+    }
+
+    // Timestamps: keep the earliest createdAt and the latest updatedAt.
+    if (typeof r.createdAt === "number" &&
+        (typeof target.createdAt !== "number" || r.createdAt < target.createdAt)) {
+      target.createdAt = r.createdAt;
+    }
+    if (typeof r.updatedAt === "number" &&
+        (typeof target.updatedAt !== "number" || r.updatedAt > target.updatedAt)) {
+      target.updatedAt = r.updatedAt;
+    }
+
+    if (target.lyricsJa === undefined || target.lyricsJa === null) target.lyricsJa = "";
+    if (target.lyricsJaSource === undefined || target.lyricsJaSource === null) target.lyricsJaSource = "";
+
+    return JSON.stringify(target) !== before;
   },
 
   // Import songs + playlists from JSON file
@@ -311,27 +499,27 @@ LyricsApp.Store = {
           callback("Invalid file: no songs array found");
           return;
         }
-        // Merge: add songs that don't exist yet (by id), update those that do
+        // Merge without ever creating a duplicate: match first by id, then by
+        // title+artist (songKey). Only truly new songs are added. When a match
+        // is found the existing row is updated, and non-empty lyrics/translation
+        // are never overwritten by an empty imported one.
         var existingSongs = self._read();
-        var existingIds = {};
-        for (var i = 0; i < existingSongs.length; i++) {
-          existingIds[existingSongs[i].id] = true;
-        }
-        var addedCount = 0;
-        var updatedCount = 0;
+        var byId = {};
+        for (var i = 0; i < existingSongs.length; i++) byId[existingSongs[i].id] = existingSongs[i];
+
+        var addedCount = 0, updatedCount = 0, unchangedCount = 0;
         for (var j = 0; j < data.songs.length; j++) {
           var song = data.songs[j];
-          if (existingIds[song.id]) {
-            // Update existing
-            for (var k = 0; k < existingSongs.length; k++) {
-              if (existingSongs[k].id === song.id) {
-                existingSongs[k] = song;
-                updatedCount++;
-                break;
-              }
-            }
+          var target = byId[song.id] || self._findLiveByKey(existingSongs, song.title, song.artist);
+          if (target) {
+            if (self._mergeImported(target, song)) updatedCount++;
+            else unchangedCount++;
           } else {
+            // Normalize translation fields on brand-new imports.
+            if (song.lyricsJa === undefined || song.lyricsJa === null) song.lyricsJa = "";
+            if (song.lyricsJaSource === undefined || song.lyricsJaSource === null) song.lyricsJaSource = "";
             existingSongs.push(song);
+            byId[song.id] = song;
             addedCount++;
           }
         }
@@ -360,7 +548,7 @@ LyricsApp.Store = {
           LyricsApp.PlaylistStore._write(existingPlaylists);
         }
 
-        callback(null, addedCount, updatedCount);
+        callback(null, addedCount, updatedCount, unchangedCount);
       } catch (ex) {
         callback("Failed to parse file: " + ex.message);
       }

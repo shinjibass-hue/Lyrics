@@ -424,6 +424,24 @@ textarea {
 .fetch-status.error { color: var(--danger); }
 .fetch-status.loading { color: var(--accent); }
 
+/* Live song count on the list header */
+.song-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Auto-translate opt-in toggle */
+.auto-translate-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.auto-translate-toggle input { cursor: pointer; }
+
 /* Song item lyrics indicator */
 .no-lyrics {
   font-size: 0.7rem;

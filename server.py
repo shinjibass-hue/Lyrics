@@ -8,6 +8,7 @@ import urllib.request
 import urllib.error
 
 DEEPL_URL = "https://api-free.deepl.com/v2/translate"
+DEEPL_USAGE_URL = "https://api-free.deepl.com/v2/usage"
 BATCH_SIZE = 50  # DeepL free API accepts up to 50 text params per request
 
 # A line is passed through untranslated (kept in place) when it is blank
@@ -94,6 +95,38 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
+
+    def do_GET(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/api/deepl-usage":
+            self._handle_usage()
+            return
+        # Everything else is a static file.
+        super().do_GET()
+
+    def _handle_usage(self):
+        """Report real DeepL usage: {character_count, character_limit}.
+        Never crashes the server — returns an error object instead."""
+        key = load_deepl_key()
+        if not key:
+            self._send_json(200, {"error": "deepl_key_missing"})
+            return
+        try:
+            req = urllib.request.Request(
+                DEEPL_USAGE_URL,
+                headers={"Authorization": "DeepL-Auth-Key " + key},
+                method="GET",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+            self._send_json(200, {
+                "character_count": body.get("character_count", 0),
+                "character_limit": body.get("character_limit", 0),
+            })
+        except urllib.error.HTTPError as e:
+            self._send_json(200, {"error": "deepl_http_error", "status": e.code})
+        except Exception as e:
+            self._send_json(200, {"error": "usage_failed", "detail": str(e)})
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]

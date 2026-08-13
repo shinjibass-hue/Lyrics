@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 
@@ -29,10 +29,17 @@
         <button id="btn-translate-all" class="btn-secondary">未訳をまとめて翻訳</button>
         <span id="translate-all-status" class="fetch-status"></span>
         <span id="translate-usage" class="fetch-status" title="DeepL 無料枠の今月の使用量"></span>
+        <label class="auto-translate-toggle" title="歌詞を取得した直後に自動で翻訳します（既定オフ）">
+          <input type="checkbox" id="chk-auto-translate"> 取得時に自動翻訳
+        </label>
         <button id="btn-export" class="btn-secondary">Export</button>
         <button id="btn-import" class="btn-secondary">Import</button>
         <input type="file" id="import-file-input" accept=".json" hidden>
+        <button id="btn-dedup" class="btn-secondary">重複を整理</button>
         <button id="btn-sync" class="btn-secondary">Sync</button>
+      </div>
+      <div class="header-actions" style="margin-top: 0.4rem;">
+        <span id="song-count" class="song-count"></span>
       </div>
     </header>
     <main class="main-content">
@@ -285,11 +292,11 @@ To the place I belong"></textarea>
   </div>
 
   <script src="js/presets.js?v=1"></script>
-  <script src="js/store.js?v=11"></script>
-  <script src="js/lyricsFetcher.js?v=6"></script>
+  <script src="js/store.js?v=12"></script>
+  <script src="js/lyricsFetcher.js?v=7"></script>
   <script src="js/bpmEngine.js?v=6"></script>
-  <script src="js/songList.js?v=8"></script>
-  <script src="js/songEditor.js?v=6"></script>
+  <script src="js/songList.js?v=9"></script>
+  <script src="js/songEditor.js?v=7"></script>
   <script src="js/playlistView.js?v=5"></script>
   <script src="js/performer.js?v=6"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>

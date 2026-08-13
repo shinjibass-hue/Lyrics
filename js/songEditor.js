@@ -108,7 +108,12 @@ LyricsApp.SongEditorView = {
     } else {
       // New song: any translation typed in is a manual one.
       data.lyricsJaSource = lyricsJa.trim() ? "manual" : "";
-      LyricsApp.Store.create(data);
+      var result = LyricsApp.Store.create(data);
+      if (result && result.duplicate) {
+        alert("同じ曲が既にあります。既存の曲を開きます。");
+        LyricsApp.App.navigate("song-editor", { songId: result.song.id });
+        return;
+      }
     }
 
     LyricsApp.App.navigate("song-list");
@@ -152,13 +157,7 @@ LyricsApp.SongEditorView = {
         statusEl.className = "fetch-status success";
       })
       .catch(function (err) {
-        if (err && err.code === "deepl_key_missing") {
-          statusEl.textContent = "DEEPL_KEY が渡されていません。vault exec 経由で起動してください";
-        } else if (err && err.message === "length_mismatch") {
-          statusEl.textContent = "行数が一致しないため中止しました";
-        } else {
-          statusEl.textContent = "翻訳に失敗しました";
-        }
+        statusEl.textContent = LyricsApp.LyricsFetcher.translateErrorMessage(err);
         statusEl.className = "fetch-status error";
       })
       .then(function () {
