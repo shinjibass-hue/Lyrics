@@ -5,6 +5,7 @@ import json
 import os
 import re
 import socketserver
+import sys
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -236,6 +237,29 @@ def _would_shrink(new_songs):
     if now["songs"] < was["songs"] or now["lyrics"] < was["lyrics"] or now["ja"] < was["ja"]:
         return {"file": was, "incoming": now}
     return None
+
+
+def _rebuild_single_file():
+    """iPhone 用の1枚版（~/SynologyDrive/CountryLyrics.html）を作り直します。
+
+    保存のたびに呼びます。Drive が NAS へ同期するので、iPhone は開くだけで
+    最新になり、取り込みの操作が要りません。
+    失敗しても例外は投げません。保存そのものを巻き添えにしないためです。
+    """
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "build_single.py")
+    if not os.path.exists(script):
+        return "no_script"
+    try:
+        import subprocess
+        r = subprocess.run([sys.executable, script],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode != 0:
+            print("rebuild single failed: %s" % (r.stderr or "")[-300:], flush=True)
+            return "failed"
+        return "ok"
+    except Exception as e:
+        print("rebuild single error: %s: %s" % (type(e).__name__, e), flush=True)
+        return "error"
 
 
 def write_data(obj):
@@ -470,9 +494,15 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
                 print("write_data failed: %s" % e, flush=True)
                 self._send_json(500, {"error": "write_failed", "detail": str(e)})
                 return
+            # 保存できたら、iPhone 用の1枚版も作り直します。
+            # Drive が NAS へ同期するので、iPhone は開くだけで最新になります。
+            # 失敗しても保存は成功扱いにします（本体の保存を巻き添えにしないため）。
+            rebuilt = _rebuild_single_file()
+
             self._send_json(200, {"ok": True, "path": p,
                                   "songs": len(songs),
-                                  "playlists": len(obj.get("playlists") or [])})
+                                  "playlists": len(obj.get("playlists") or []),
+                                  "single": rebuilt})
             return
 
         try:

@@ -5,7 +5,13 @@ LyricsApp.Store = {
   SORT_KEY: "country_lyrics_sort_mode",
   _suppressSync: false, // true when writing from merge (prevents sync loop)
 
+  // localStorage が使えない場所（Synology Drive のビューワ、サンドボックス内の
+  // 表示など）では、代わりにここへ持ちます。これが無いと、データを読めていても
+  // 保存が握り潰され、画面には0件が出ます（2026-08-15、iPhone で発生）。
+  _mem: null,
+
   _read: function () {
+    if (this._mem) return this._mem;
     try {
       var data = localStorage.getItem(this.STORAGE_KEY);
       var songs = data ? JSON.parse(data) : [];
@@ -26,7 +32,12 @@ LyricsApp.Store = {
 
   _write: function (songs) {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
+      if (this._mem) {
+        // localStorage が使えない場所。手元に持つだけにします。
+        this._mem = songs;
+      } else {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
+      }
       if (!this._suppressSync && LyricsApp.CloudSync) {
         LyricsApp.CloudSync.scheduleSync();
       }
@@ -35,7 +46,18 @@ LyricsApp.Store = {
         LyricsApp.FileStore.schedule();
       }
     } catch (e) {
-      alert("Storage limit reached. Please delete some songs.");
+      // 保存に失敗しても、データは必ず手元に残します。
+      // ここで捨てると _read() が空を返し、直後の seedPresets() が
+      // 曲名だけの511曲を入れ直すため、「アプリは出るのに歌詞が無い」状態になります
+      // （2026-08-15、iPhone で発生。2MB の同梱データが容量超過になった）。
+      this._mem = songs;
+
+      // 同梱データで動いている場所（iPhone など）では保存する先がそもそも無いので、
+      // 警告は出しません。編集して使う場所でだけ知らせます。
+      var bundled = LyricsApp.FileStore && LyricsApp.FileStore._readOnly;
+      if (!bundled) {
+        alert("保存できませんでした（容量超過）。この端末では表示のみになります。");
+      }
     }
   },
 
