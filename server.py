@@ -334,7 +334,7 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
                 data = read_data()
             except Exception as e:
                 print("read_data failed: %s" % e, flush=True)
-                self._send_json(200, {"error": "read_failed", "detail": str(e)})
+                self._send_json(500, {"error": "read_failed", "detail": str(e)})
                 return
             if data is None:
                 self._send_json(200, {"exists": False, "path": data_path()})
@@ -375,7 +375,7 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
             return
         key = load_deepl_key()
         if not key:
-            self._send_json(200, {"error": "deepl_key_missing"})
+            self._send_json(500, {"error": "deepl_key_missing"})
             return
         try:
             req = urllib.request.Request(
@@ -392,7 +392,7 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
         except urllib.error.HTTPError as e:
             self._send_json(200, {"error": "deepl_http_error", "status": e.code})
         except Exception as e:
-            self._send_json(200, {"error": "usage_failed", "detail": str(e)})
+            self._send_json(500, {"error": "usage_failed", "detail": str(e)})
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
@@ -416,14 +416,14 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
             songs = obj.get("songs")
             if not isinstance(songs, list) or len(songs) == 0:
                 # 0件で上書きするのは事故です。受け付けません。
-                self._send_json(200, {"error": "refused_empty"})
+                self._send_json(400, {"error": "refused_empty"})
                 return
             try:
                 obj["savedAt"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
                 p = write_data(obj)
             except Exception as e:
                 print("write_data failed: %s" % e, flush=True)
-                self._send_json(200, {"error": "write_failed", "detail": str(e)})
+                self._send_json(500, {"error": "write_failed", "detail": str(e)})
                 return
             self._send_json(200, {"ok": True, "path": p,
                                   "songs": len(songs),
@@ -467,12 +467,12 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
         except Exception as e:
             # 端末にも出します。画面の「失敗1」だけでは原因が追えないためです。
             print("translate failed (%s): %s: %s" % (engine, type(e).__name__, e), flush=True)
-            self._send_json(200, {"error": "translate_failed", "detail": str(e)})
+            self._send_json(500, {"error": "translate_failed", "detail": str(e)})
             return
 
         if len(result) != len(lines):
             # Must never break line correspondence.
-            self._send_json(200, {"error": "length_mismatch"})
+            self._send_json(500, {"error": "length_mismatch"})
             return
 
         self._send_json(200, {"lines": result, "chars": chars})
