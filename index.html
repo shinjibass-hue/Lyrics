@@ -4,9 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=20260815e">
+  <link rel="stylesheet" href="css/style.css?v=20260815j">
 </head>
 <body>
+  <!-- 端末で起きたエラーを画面に出します（2026-08-15 追加）。
+       iPhone は開発者ツールが繋げないため、原因が推測になっていました。
+       ここに出た文字をそのまま伝えてもらえば、原因が確定します。 -->
+  <div id="js-error-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;
+       background:#b00020;color:#fff;font:12px/1.4 monospace;padding:8px;white-space:pre-wrap;
+       max-height:40vh;overflow:auto"></div>
+  <script>
+  (function () {
+    var bar = document.getElementById("js-error-bar");
+    function show(msg) {
+      if (!bar) return;
+      bar.style.display = "block";
+      bar.textContent += msg + "\n";
+    }
+    window.addEventListener("error", function (e) {
+      show("エラー: " + (e.message || "") + "\n  " + (e.filename || "") + " " + (e.lineno || "") + "行");
+    });
+    window.addEventListener("unhandledrejection", function (e) {
+      show("未処理: " + (e.reason && (e.reason.message || e.reason) || ""));
+    });
+    window.__diag = show;
+  })();
+  </script>
 
   <!-- SCREEN 1: Song List -->
   <div id="view-song-list" class="view active">
@@ -301,18 +324,18 @@ To the place I belong"></textarea>
     </div>
   </div>
 
-  <script src="js/presets.js?v=20260815e"></script>
-  <script src="js/store.js?v=20260815e"></script>
-  <script src="js/fileStore.js?v=20260815e"></script>
-  <script src="js/lyricsFetcher.js?v=20260815e"></script>
-  <script src="js/bpmEngine.js?v=20260815e"></script>
-  <script src="js/songList.js?v=20260815e"></script>
-  <script src="js/songEditor.js?v=20260815e"></script>
-  <script src="js/playlistView.js?v=20260815e"></script>
-  <script src="js/performer.js?v=20260815e"></script>
+  <script src="js/presets.js?v=20260815j"></script>
+  <script src="js/store.js?v=20260815j"></script>
+  <script src="js/fileStore.js?v=20260815j"></script>
+  <script src="js/lyricsFetcher.js?v=20260815j"></script>
+  <script src="js/bpmEngine.js?v=20260815j"></script>
+  <script src="js/songList.js?v=20260815j"></script>
+  <script src="js/songEditor.js?v=20260815j"></script>
+  <script src="js/playlistView.js?v=20260815j"></script>
+  <script src="js/performer.js?v=20260815j"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="js/gistSync.js?v=20260815e"></script>
-  <script src="js/app.js?v=20260815e"></script>
+  <script src="js/gistSync.js?v=20260815j"></script>
+  <script src="js/app.js?v=20260815j"></script>
 </body>
 </html>

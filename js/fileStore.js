@@ -33,9 +33,10 @@ LyricsApp.FileStore = {
 
   // まとめて2秒後に1回だけ書きます。連続した変更で何度も書かないためです。
   schedule: function () {
-    // サーバーが無い場所（NAS の Web に置いた版を iPhone で開いたときなど）では
-    // 何もしません。試みるたびに「サーバーに繋がりません」が出て邪魔になります。
-    if (this._available === false) return;
+    // サーバーがあると確認できたときだけ書きます。
+    // 「false のときだけ止める」にすると、有無が分かる前の1回目が飛んでしまい、
+    // サーバーの無い端末で毎回メッセージが出ます（2026-08-15、iPhone）。
+    if (this._available !== true) return;
     var self = this;
     if (this._timer) clearTimeout(this._timer);
     this._timer = setTimeout(function () { self.save(); }, 2000);
@@ -80,19 +81,125 @@ LyricsApp.FileStore = {
   // サーバーが無い場所（NAS の Web に置いた版を iPhone から開いたときなど）では
   // _available を false にして、以降の保存を試みないようにします。
   // これをしないと毎回「サーバーに繋がりません」が出ます（2026-08-15）。
+  // 経過を画面に出します。iPhone は開発者ツールが繋げず、原因が推測になるためです。
+  _log: function (msg) {
+    if (window.__diag) window.__diag("● " + msg);
+  },
+
   load: function () {
     var self = this;
+    self._log("api/data を確認します");
     return window.fetch(this.ENDPOINT)
       .then(function (res) {
+        self._log("api/data → " + res.status);
         if (!res.ok) { self._available = false; return null; }
         return res.json();
       })
       .then(function (j) {
-        if (!j || j.error || !j.exists) return null;
+        if (!j || j.error || !j.exists) return self._loadBundled();
         self._available = true;
+        self._log("サーバーから取得 " + (j.songs || []).length + "曲");
         return j;
       })
-      .catch(function () { self._available = false; return null; });
+      .catch(function (e) {
+        self._log("api/data 失敗: " + (e && e.message ? e.message : e));
+        self._available = false;
+        return self._loadBundled();
+      });
+  },
+
+  // サーバーが無い場所（NAS の Web に置いた版）では、一緒に置いてある
+  // data/country-lyrics.json を読みます。これが無いと、そのアドレスは
+  // 取り込みボタンを押すまでずっと空のままになります（2026-08-15）。
+  BUNDLED: "data/country-lyrics.json",
+  BUNDLED_INDEX: "data/index.json",
+
+  // まず索引（曲名だけ・約20KB）を読んで一覧を出し、歌詞と訳は後ろで読みます。
+  // 全部（約530KB）を読み終えてから一覧を出していたため、iPhone で2分かかっていました
+  // （2026-08-15）。索引だけなら27分の1です。
+  _loadBundled: function () {
+    var self = this;
+    self._log("索引 " + this.BUNDLED_INDEX + " を読みます");
+    return window.fetch(this.BUNDLED_INDEX)
+      .then(function (res) {
+        self._log("索引 → " + res.status);
+        return res.ok ? res.json() : null;
+      })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.songs) || j.songs.length === 0) {
+          self._log("索引が空。全体を読みます");
+          return self._loadFull();
+        }
+        self._log("索引を取得 " + j.songs.length + "曲");
+        self._markReadOnly();
+        self._fillLyricsLater();
+        return { exists: true, songs: j.songs, playlists: j.playlists || [], bundled: true };
+      })
+      .catch(function (e) {
+        self._log("索引 失敗: " + (e && e.message ? e.message : e));
+        return self._loadFull();
+      });
+  },
+
+  // サーバーが無い端末だと分かった時点で、この端末では保存しないことにします。
+  // あわせて、以前の訪問で書き込まれた大きなデータを消します。残っていると
+  // 起動のたびに解析され、iPhone では数十秒かかって画面が固まります（2026-08-15）。
+  _markReadOnly: function () {
+    this._readOnly = true;
+    try {
+      var k = LyricsApp.Store.STORAGE_KEY;
+      if (localStorage.getItem(k)) localStorage.removeItem(k);
+    } catch (e) {}
+  },
+
+  _loadFull: function () {
+    var self = this;
+    return window.fetch(this.BUNDLED)
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.songs) || j.songs.length === 0) return null;
+        self._markReadOnly();
+        return { exists: true, songs: j.songs, playlists: j.playlists || [], bundled: true };
+      })
+      .catch(function () { return null; });
+  },
+
+  // 一覧が出たあとで、歌詞と訳を流し込みます。画面は止めません。
+  _fillLyricsLater: function () {
+    var self = this;
+    setTimeout(function () {
+      window.fetch(self.BUNDLED)
+        .then(function (res) { return res.ok ? res.json() : null; })
+        .then(function (j) {
+          if (!j || !Array.isArray(j.songs)) return;
+          var byId = {};
+          j.songs.forEach(function (s) { byId[s.id] = s; });
+          var here = LyricsApp.Store._read();
+          var n = 0;
+          here.forEach(function (s) {
+            var full = byId[s.id];
+            if (!full) return;
+            if (!s.lyrics && full.lyrics) { s.lyrics = full.lyrics; n++; }
+            if (!s.lyricsJa && full.lyricsJa) { s.lyricsJa = full.lyricsJa; }
+            if (!s.lyricsJaSource && full.lyricsJaSource) { s.lyricsJaSource = full.lyricsJaSource; }
+          });
+          LyricsApp.Store._cache = here;   // 画面用に手元だけ更新（保存は試みません）
+          if (LyricsApp.SongListView) {
+            try { LyricsApp.SongListView.render(document.getElementById("search-input").value); } catch (e) {}
+          }
+          self._say("歌詞を読み込みました（" + n + "曲）", "");
+        })
+        .catch(function () {});
+    }, 0);
+  },
+
+  // 曲・歌詞・訳の数を数えます（削除済みは除く）。どちらが充実しているかの判定に使います。
+  _mark: function (songs) {
+    var n = 0, ly = 0, ja = 0;
+    (songs || []).forEach(function (s) {
+      if (s && !s.deleted) { n++; if (s.lyrics) ly++; if (s.lyricsJa) ja++; }
+    });
+    return { songs: n, lyrics: ly, ja: ja };
   },
 
   // 起動時に1回だけ呼びます。
@@ -110,11 +217,19 @@ LyricsApp.FileStore = {
         if (here && here.length > 0) return self.save();
         return null;
       }
-      if (here && here.length > 0) {
-        self._say("ファイルあり（" + (data.songs || []).length + "曲）／手元 " + here.length + "曲", "");
+      // 手元より充実していれば入れ替えます。
+      // 「手元が空のときだけ」にすると、seedPresets() が入れた曲名だけの511曲が
+      // 先に居座り、歌詞も訳も入りません（2026-08-15、iPhone で空になった原因）。
+      var fileMark = self._mark(data.songs || []);
+      var hereMark = self._mark(here);
+      if (fileMark.songs <= hereMark.songs &&
+          fileMark.lyrics <= hereMark.lyrics &&
+          fileMark.ja <= hereMark.ja) {
+        self._log("手元(" + hereMark.songs + "曲)の方が充実。入れ替えません");
+        self._say("", "");
         return null;
       }
-      // 手元が空のときだけ、ファイルから入れます。
+      self._log("画面へ入れます " + fileMark.songs + "曲");
       LyricsApp.Store._write(data.songs || []);
       if (LyricsApp.PlaylistStore && data.playlists) {
         LyricsApp.PlaylistStore._write(data.playlists);

@@ -33,6 +33,16 @@ LyricsApp.Store = {
 
   _write: function (songs) {
     this._cache = songs;   // 手元を先に入れ替えます（保存が失敗しても表示は保たれます）
+
+    // サーバーが無い端末（NAS の Web に置いた版を iPhone で開いたとき）では
+    // localStorage に書きません。曲データは約1.9MB あり、iPhone では
+    // 書き出しと読み直しに数十秒かかって画面が固まります。
+    // データは毎回ファイルから来るので、保存する必要がありません（2026-08-15）。
+    if (LyricsApp.FileStore && LyricsApp.FileStore._readOnly) {
+      if (!this._suppressSync && LyricsApp.CloudSync) LyricsApp.CloudSync.scheduleSync();
+      return;
+    }
+
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(songs));
       if (!this._suppressSync && LyricsApp.CloudSync) {

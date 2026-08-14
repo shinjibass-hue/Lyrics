@@ -85,8 +85,18 @@ LyricsApp.App = {
     }
   },
 
+  _listScroll: 0,
+
   navigate: function (viewName, params) {
     params = params || {};
+
+    // 一覧から離れるとき、見ていた位置を覚えます。
+    // 582曲あるので、戻るたびに先頭へ飛ばされると探し直しになります（2026-08-15）。
+    if (this._views["song-list"] &&
+        this._views["song-list"].classList.contains("active") &&
+        viewName !== "song-list") {
+      this._listScroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+    }
 
     // Hide all views
     var keys = Object.keys(this._views);
@@ -105,6 +115,12 @@ LyricsApp.App = {
       case "song-list":
         document.getElementById("search-input").value = "";
         LyricsApp.SongListView.render();
+        // 覚えておいた位置へ戻します。描画が終わってからでないと効きません。
+        var y = this._listScroll;
+        if (y > 0) {
+          window.scrollTo(0, y);
+          setTimeout(function () { window.scrollTo(0, y); }, 0);
+        }
         break;
       case "song-editor":
         LyricsApp.SongEditorView.show(params.songId);
