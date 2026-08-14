@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Country Lyrics</title>
-  <link rel="stylesheet" href="css/style.css?v=7">
+  <link rel="stylesheet" href="css/style.css?v=20260815e">
 </head>
 <body>
 
@@ -39,7 +39,12 @@
         <span id="file-store-status" class="fetch-status"></span>
         <button id="btn-export" class="btn-secondary">Export</button>
         <button id="btn-import" class="btn-secondary">Import</button>
-        <input type="file" id="import-file-input" accept=".json" hidden>
+        <!-- iOS の Safari 対策（2026-08-15）。
+             accept=".json" を付けるとファイル選択画面で JSON が灰色になり選べません。
+             hidden も、完全に非表示の要素は click() で開かないことがあるため使いません。
+             画面外へ逃がして見えなくしています。 -->
+        <input type="file" id="import-file-input"
+               style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <button id="btn-dedup" class="btn-secondary">重複を整理</button>
         <button id="btn-sync" class="btn-secondary">Sync</button>
       </div>
@@ -296,18 +301,18 @@ To the place I belong"></textarea>
     </div>
   </div>
 
-  <script src="js/presets.js?v=1"></script>
-  <script src="js/store.js?v=14"></script>
-  <script src="js/fileStore.js?v=1"></script>
-  <script src="js/lyricsFetcher.js?v=11"></script>
-  <script src="js/bpmEngine.js?v=6"></script>
-  <script src="js/songList.js?v=11"></script>
-  <script src="js/songEditor.js?v=8"></script>
-  <script src="js/playlistView.js?v=5"></script>
-  <script src="js/performer.js?v=6"></script>
+  <script src="js/presets.js?v=20260815e"></script>
+  <script src="js/store.js?v=20260815e"></script>
+  <script src="js/fileStore.js?v=20260815e"></script>
+  <script src="js/lyricsFetcher.js?v=20260815e"></script>
+  <script src="js/bpmEngine.js?v=20260815e"></script>
+  <script src="js/songList.js?v=20260815e"></script>
+  <script src="js/songEditor.js?v=20260815e"></script>
+  <script src="js/playlistView.js?v=20260815e"></script>
+  <script src="js/performer.js?v=20260815e"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="js/gistSync.js?v=11"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/gistSync.js?v=20260815e"></script>
+  <script src="js/app.js?v=20260815e"></script>
 </body>
 </html>
