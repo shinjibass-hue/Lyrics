@@ -205,6 +205,39 @@ def read_data():
         return json.load(f)
 
 
+def _count(songs):
+    """曲・歌詞あり・訳ありの件数を数えます（削除済みは除く）。"""
+    n = ly = ja = 0
+    for s in songs or []:
+        if not isinstance(s, dict) or s.get("deleted"):
+            continue
+        n += 1
+        if s.get("lyrics"):
+            ly += 1
+        if s.get("lyricsJa"):
+            ja += 1
+    return {"songs": n, "lyrics": ly, "ja": ja}
+
+
+def _would_shrink(new_songs):
+    """今のファイルより中身が痩せる保存かどうかを見ます。
+    痩せるなら理由を返し、問題なければ None を返します。
+
+    曲数だけでは足りません。曲数が同じでも歌詞や訳だけが消えることがあるためです。
+    """
+    try:
+        cur = read_data()
+    except Exception:
+        return None
+    if not cur:
+        return None
+    was = _count(cur.get("songs"))
+    now = _count(new_songs)
+    if now["songs"] < was["songs"] or now["lyrics"] < was["lyrics"] or now["ja"] < was["ja"]:
+        return {"file": was, "incoming": now}
+    return None
+
+
 def write_data(obj):
     """一時ファイルに書いてから置き換えます。途中で失敗しても元は無傷です。
 
@@ -418,6 +451,18 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
                 # 0件で上書きするのは事故です。受け付けません。
                 self._send_json(400, {"error": "refused_empty"})
                 return
+
+            # 歌詞や訳が消える上書きは、意図した操作でない限り受け付けません。
+            # 2026-08-15、582曲・訳582 が 511曲・歌詞0・訳0 で上書きされ、
+            # 一晩分の翻訳が消えました。0件だけを見ていて、中身が痩せる保存を
+            # 通していたためです。?force=1 を付けたときだけ通します。
+            force = "force=1" in (self.path.split("?", 1)[1] if "?" in self.path else "")
+            if not force:
+                shrink = _would_shrink(songs)
+                if shrink:
+                    print("refused shrinking write: %s" % (shrink,), flush=True)
+                    self._send_json(409, {"error": "refused_shrink", **shrink})
+                    return
             try:
                 obj["savedAt"] = __import__("datetime").datetime.now().isoformat(timespec="seconds")
                 p = write_data(obj)

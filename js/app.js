@@ -12,8 +12,17 @@ LyricsApp.App = {
       "playlist-detail": document.getElementById("view-playlist-detail")
     };
 
-    LyricsApp.Store.seedPresets();
+    // ファイル保存（~/SynologyDrive）。Export を押さなくて済むようにするため。
+    // 初期データを入れるより先にファイルを読みます。順番が逆だと、seedPresets() が
+    // 入れた511曲でファイルが上書きされ、歌詞と訳が消えます（2026-08-15 に発生）。
+    var self = this;
+    this._initFileStore().then(function () {
+      LyricsApp.Store.seedPresets();
+      self._initViews();
+    });
+  },
 
+  _initViews: function () {
     LyricsApp.SongListView.init();
     LyricsApp.SongEditorView.init();
     LyricsApp.PerformerView.init();
@@ -25,9 +34,6 @@ LyricsApp.App = {
       LyricsApp.App.navigate("playlists");
     });
 
-    // ファイル保存（~/SynologyDrive）。Export を押さなくて済むようにするため。
-    this._initFileStore();
-
     // Auto-sync: set up status indicator and start
     this._initAutoSync();
 
@@ -35,16 +41,17 @@ LyricsApp.App = {
   },
 
   _initFileStore: function () {
-    if (!LyricsApp.FileStore) return;
+    if (!LyricsApp.FileStore) return Promise.resolve(null);
     var el = document.getElementById("file-store-status");
     LyricsApp.FileStore.onStatus(function (text, kind) {
       if (!el) return;
       el.textContent = text;
       el.className = "fetch-status" + (kind ? " " + kind : "");
     });
-    LyricsApp.FileStore.initOnBoot();
     var btn = document.getElementById("btn-file-save");
-    if (btn) btn.addEventListener("click", function () { LyricsApp.FileStore.save(); });
+    // ボタンを押した保存は必ず通します（force）。消したものを消したままにできるように。
+    if (btn) btn.addEventListener("click", function () { LyricsApp.FileStore.save(true); });
+    return LyricsApp.FileStore.initOnBoot().catch(function () { return null; });
   },
 
   _initAutoSync: function () {
