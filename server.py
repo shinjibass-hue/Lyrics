@@ -475,7 +475,9 @@ class LyricsHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json(500, {"error": "length_mismatch"})
             return
 
-        self._send_json(200, {"lines": result, "chars": chars})
+        # 実際に使ったエンジン名も返します。画面側はこれを保存し、
+        # 固定文字列（以前は "deepl" 固定）でラベルを付けないようにします。
+        self._send_json(200, {"lines": result, "chars": chars, "engine": engine})
 
 
 class ThreadedServer(socketserver.ThreadingMixIn, http.server.HTTPServer):

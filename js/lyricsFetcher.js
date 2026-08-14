@@ -449,7 +449,9 @@ LyricsApp.LyricsFetcher = {
       }
       LyricsApp.TranslateUsage.add(data.chars || 0);
       var ja = data.lines.join("\n");
-      LyricsApp.Store.update(songId, { lyricsJa: ja, lyricsJaSource: "deepl" });
+      // サーバーが実際に使ったエンジン名を保存します（"deepl" 固定はやめました）。
+      var src = data.engine || "unknown";
+      LyricsApp.Store.update(songId, { lyricsJa: ja, lyricsJaSource: src });
       return ja;
     });
   },

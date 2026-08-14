@@ -292,7 +292,7 @@ LyricsApp.CloudSync = {
             // Fill in a translation only if local has none (never overwrite manual)
             if (remoteHasJa && !localHasJa) {
               ls[idx].lyricsJa = remoteJa;
-              ls[idx].lyricsJaSource = remoteJaSrc || "deepl";
+              ls[idx].lyricsJaSource = remoteJaSrc || "unknown";
             }
           }
         }
