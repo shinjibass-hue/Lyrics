@@ -129,13 +129,19 @@ LyricsApp.FileStore = {
       var hereMark = self._mark(here);
       var fileMark = self._fileMark;
 
-      // ファイルの方が曲・歌詞・訳のどれかで多いなら、ファイルを正とします。
-      var fileIsRicher = fileMark.songs > hereMark.songs ||
-                         fileMark.lyrics > hereMark.lyrics ||
-                         fileMark.ja > hereMark.ja;
-      if (!fileIsRicher) {
-        self._say("ファイル " + fileMark.songs + "曲/訳" + fileMark.ja +
-                  "／手元 " + hereMark.songs + "曲/訳" + hereMark.ja, "");
+      // ファイルが手元より痩せていなければ、ファイルを正として読み込みます。
+      //
+      // 「多いときだけ読む」にすると、件数が同じで中身だけ直した場合に読み込まれません。
+      // ファイル側で訳を直しても画面に出てこない、という状態になります（2026-08-15）。
+      // 手元の方が多いときだけ、読み込みを見送ります。
+      var filePoorer = fileMark.songs < hereMark.songs ||
+                       fileMark.lyrics < hereMark.lyrics ||
+                       fileMark.ja < hereMark.ja;
+      if (filePoorer) {
+        self._say("ファイルの方が少ないため読み込みませんでした（ファイル " +
+                  fileMark.songs + "曲/歌詞" + fileMark.lyrics + "/訳" + fileMark.ja +
+                  "／手元 " + hereMark.songs + "曲/歌詞" + hereMark.lyrics +
+                  "/訳" + hereMark.ja + "）", "error");
         return null;
       }
       LyricsApp.Store._suppressSync = true;    // 読み込みで自動保存を誘発させません
