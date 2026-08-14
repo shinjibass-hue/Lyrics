@@ -53,6 +53,12 @@ LyricsApp.FileStore = {
 
   save: function (force) {
     var self = this;
+    if (this._readOnly) {
+      // 同梱データで動いている場所（iPhone など）にはサーバーがありません。
+      // 手元では使えますが、書き戻しはしません。
+      this._say("この端末では保存しません（同梱データ）", "");
+      return Promise.resolve({ skipped: true, reason: "read_only" });
+    }
     var songs = LyricsApp.Store.getAll();
     var playlists = LyricsApp.PlaylistStore ? LyricsApp.PlaylistStore.getAll() : [];
     if (!songs || songs.length === 0) {
@@ -98,13 +104,46 @@ LyricsApp.FileStore = {
       });
   },
 
+  // 同梱データの場所。サーバーが無いとき（iPhone・ネット上に置いたとき）に使います。
+  BUNDLED: "data/country-lyrics.json",
+
   // ファイルの中身を返します。無ければ null。
+  //
+  // まず server.py の /api/data を見ます。サーバーが動いていない場所
+  // （iPhone から開いたとき、GitHub Pages 上など）では、リポジトリに同梱した
+  // data/country-lyrics.json を読みます。これで API も鍵も同期も要らずに、
+  // 開くだけで曲と訳が出ます。
   load: function () {
+    var self = this;
     return window.fetch(this.ENDPOINT)
       .then(function (res) { return res.json(); })
       .then(function (j) {
-        if (!j || j.error || !j.exists) return null;
+        if (!j || j.error || !j.exists) return self._loadBundled();
         return j;
+      })
+      .catch(function () { return self._loadBundled(); });
+  },
+
+  _loadBundled: function () {
+    var self = this;
+    // 1枚にまとめた版（CountryLyrics.html）では、曲データが HTML の中に入っています。
+    // fetch も相対パスも使えない場所（Drive アプリ・共有リンク経由など）で開くためです。
+    if (LyricsApp.EMBEDDED_DATA && Array.isArray(LyricsApp.EMBEDDED_DATA.songs)
+        && LyricsApp.EMBEDDED_DATA.songs.length > 0) {
+      this._readOnly = true;
+      return Promise.resolve({
+        exists: true,
+        songs: LyricsApp.EMBEDDED_DATA.songs,
+        playlists: LyricsApp.EMBEDDED_DATA.playlists || [],
+        bundled: true
+      });
+    }
+    return window.fetch(this.BUNDLED, { cache: "no-cache" })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (j) {
+        if (!j || !Array.isArray(j.songs) || j.songs.length === 0) return null;
+        self._readOnly = true;   // 同梱データを読んだ場所では書き戻しません
+        return { exists: true, songs: j.songs, playlists: j.playlists || [], bundled: true };
       })
       .catch(function () { return null; });
   },
